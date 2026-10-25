@@ -29,10 +29,10 @@ import com.example.insulia.data.GlucoseReading
 import com.example.insulia.data.GlucoseStatus
 
 /**
- * Trend chart for the most recent readings.
+ * Trend chart for weekly glucose readings.
  *
- * The chart is driven by the readings that have actually been recorded, so a
- * reading logged from the home screen immediately shows up here.
+ * The chart shows one reading per week (at least 4 times per month) so the
+ * patient tracks progress across weeks rather than day by day.
  */
 @Composable
 fun GlucoseTrendCard(
@@ -88,7 +88,7 @@ fun GlucoseTrendCard(
             ) {
                 readings.forEach { reading ->
                     Text(
-                        text = DateFormats.dayLabel(reading.recordedAt),
+                        text = DateFormats.weekLabel(reading.recordedAt),
                         fontSize = 10.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

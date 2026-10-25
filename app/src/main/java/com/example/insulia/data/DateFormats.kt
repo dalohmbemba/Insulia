@@ -17,6 +17,20 @@ object DateFormats {
     fun dayLabel(millis: Long): String =
         SimpleDateFormat("EEE", Locale.getDefault()).format(Date(millis))
 
+    /** Week label for the glucose trend, for example "Week 12 Oct". */
+    fun weekLabel(millis: Long): String {
+        val calendar = Calendar.getInstance()
+        calendar.timeInMillis = millis
+        val weekStart = Calendar.getInstance()
+        weekStart.timeInMillis = millis
+        weekStart.set(Calendar.DAY_OF_WEEK, weekStart.firstDayOfWeek)
+        weekStart.set(Calendar.HOUR_OF_DAY, 0)
+        weekStart.set(Calendar.MINUTE, 0)
+        weekStart.set(Calendar.SECOND, 0)
+        weekStart.set(Calendar.MILLISECOND, 0)
+        return SimpleDateFormat("d MMM", Locale.getDefault()).format(Date(weekStart.timeInMillis))
+    }
+
     /** Time of day in 24 hour format, for example "13:05". */
     fun timeLabel(millis: Long): String =
         SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(millis))

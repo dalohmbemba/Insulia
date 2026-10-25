@@ -31,7 +31,7 @@
     <string name="glucose_status_in_range">In range</string>
     <string name="glucose_status_high">High</string>
     <string name="glucose_value_format">%1$d mg/dL</string>
-    <string name="glucose_trend_title">Last %1$d readings</string>
+    <string name="glucose_trend_title">Weekly readings (last %1$d weeks)</string>
     <string name="glucose_trend_units">mg/dL</string>
     <string name="glucose_trend_target_range">Target range %1$d–%2$d mg/dL</string>
     <string name="glucose_levels_subtitle">All readings you have recorded</string>
@@ -40,7 +40,7 @@
     <string name="glucose_delete_reading_description">Delete reading</string>
 
     <!-- Log reading dialog -->
-    <string name="dialog_log_reading_title">Log a glucose reading</string>
+    <string name="dialog_log_reading_title">Log a weekly glucose reading</string>
     <string name="dialog_log_reading_value">Glucose value (mg/dL)</string>
     <string name="dialog_log_reading_value_error">Enter a value between 20 and 600</string>
     <string name="dialog_log_reading_context">Reading context</string>
@@ -125,6 +125,20 @@
     <string name="records_last_clinic_visit">Last clinic visit</string>
     <string name="records_medication">Medication record</string>
     <string name="records_medication_value">See your prescribed medication plan</string>
+    <string name="records_medication_tracking">Medication tracking</string>
+    <string name="records_diabetes_type">Diabetes type</string>
+    <string name="records_medication_name">Medication</string>
+    <string name="records_dosage">Dosage / Instructions</string>
+    <string name="records_started_corrected">Started / Corrected on</string>
+    <string name="records_finish_date">Finish date</string>
+    <string name="records_status">Status</string>
+    <string name="records_status_overdue">Overdue</string>
+    <string name="records_status_due_soon">Due soon (%1$d days left)</string>
+    <string name="records_status_on_track">On track</string>
+    <string name="records_no_medications">No medications recorded.</string>
+    <string name="records_medication_alert">Medication due: %1$s (%2$s)</string>
+    <string name="diabetes_type_1">Type 1 Diabetes</string>
+    <string name="diabetes_type_2">Type 2 Diabetes</string>
     <string name="records_readings_logged">Readings logged</string>
     <string name="records_food_notes">Food notes saved</string>
     <string name="records_appointments">Appointments booked</string>

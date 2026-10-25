@@ -160,6 +160,7 @@ fun InsuliaApp(
                 readingCount = viewModel.readings.size,
                 foodNoteCount = viewModel.foodNotes.size,
                 appointmentCount = viewModel.appointments.size,
+                medications = viewModel.medications,
                 onBack = ::goBack,
                 onSelectTab = ::selectTab,
                 selectedTab = selectedTab

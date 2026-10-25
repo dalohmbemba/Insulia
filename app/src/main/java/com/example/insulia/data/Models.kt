@@ -3,6 +3,32 @@ package com.example.insulia.data
 import androidx.annotation.StringRes
 import com.example.insulia.R
 
+/** The type of diabetes the patient has been diagnosed with. */
+enum class DiabetesType(@StringRes val labelRes: Int) {
+    TYPE_1(R.string.diabetes_type_1),
+    TYPE_2(R.string.diabetes_type_2)
+}
+
+/**
+ * A medication prescribed to the patient as part of their diabetes treatment.
+ *
+ * @param diabetesType which diabetes type this medication is for.
+ * @param name the name of the medication.
+ * @param dosage frequency or dose instructions shown to the patient.
+ * @param startedAt when the patient started (or corrected) taking this medication.
+ * @param finishAt when the course is due to finish.
+ * @param isActive whether the medication is currently being taken.
+ */
+data class Medication(
+    val id: Long,
+    val diabetesType: DiabetesType,
+    val name: String,
+    val dosage: String,
+    val startedAt: Long,
+    val finishAt: Long,
+    val isActive: Boolean = true
+)
+
 /**
  * A single glucose measurement.
  *
@@ -97,5 +123,6 @@ data class PatientProfile(
     val dateOfBirth: String,
     val patientId: String,
     val clinic: String,
-    val lastClinicVisit: String
+    val lastClinicVisit: String,
+    val diabetesType: DiabetesType = DiabetesType.TYPE_2
 )

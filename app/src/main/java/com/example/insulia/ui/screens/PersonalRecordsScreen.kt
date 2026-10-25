@@ -1,31 +1,40 @@
 package com.example.insulia.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.insulia.R
+import com.example.insulia.data.DateFormats
+import com.example.insulia.data.DiabetesType
 import com.example.insulia.data.GlucoseReading
 import com.example.insulia.data.GlucoseStatus
+import com.example.insulia.data.Medication
 import com.example.insulia.data.PatientProfile
 import com.example.insulia.navigation.Screen
 import com.example.insulia.ui.components.InfoRecordCard
 import com.example.insulia.ui.components.InsuliaBottomBar
+import com.example.insulia.ui.components.InsuliaCard
 import com.example.insulia.ui.components.PageHeader
 import com.example.insulia.ui.components.glucoseStatusColor
+import java.util.concurrent.TimeUnit
 
 /**
  * The saved information about the patient.
@@ -40,6 +49,7 @@ fun PersonalRecordsScreen(
     readingCount: Int,
     foodNoteCount: Int,
     appointmentCount: Int,
+    medications: List<Medication> = emptyList(),
     onBack: () -> Unit,
     onSelectTab: (Screen) -> Unit,
     selectedTab: Screen
@@ -121,9 +131,46 @@ fun PersonalRecordsScreen(
             )
 
             InfoRecordCard(
+                label = stringResource(R.string.records_diabetes_type),
+                value = stringResource(patient.diabetesType.labelRes)
+            )
+
+            InfoRecordCard(
                 label = stringResource(R.string.records_medication),
                 value = stringResource(R.string.records_medication_value)
             )
+
+            Spacer(modifier = Modifier.height(18.dp))
+
+            Text(
+                text = stringResource(R.string.records_medication_tracking),
+                fontSize = 17.sp,
+                fontWeight = FontWeight.Bold
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            if (medications.isEmpty()) {
+                InsuliaCard(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp),
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Text(
+                        text = stringResource(R.string.records_no_medications),
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(13.dp)
+                    )
+                }
+            } else {
+                medications.filter { it.isActive }.forEach { medication ->
+                    MedicationTrackingCard(medication = medication)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(18.dp))
 
             InfoRecordCard(
                 label = stringResource(R.string.records_readings_logged),
@@ -153,5 +200,92 @@ fun PersonalRecordsScreen(
             selected = selectedTab,
             onSelect = onSelectTab
         )
+    }
+}
+
+@Composable
+private fun MedicationTrackingCard(medication: Medication) {
+    val now = System.currentTimeMillis()
+    val daysLeft = TimeUnit.MILLISECONDS.toDays(medication.finishAt - now)
+    val isOverdue = medication.isActive && medication.finishAt < now
+    val isDueSoon = medication.isActive && !isOverdue && daysLeft <= 7
+
+    InsuliaCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 10.dp),
+        shape = RoundedCornerShape(10.dp)
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = medication.name,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    text = stringResource(medication.diabetesType.labelRes),
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            Text(
+                text = stringResource(R.string.records_medication_name) + ": " + medication.name,
+                fontSize = 13.sp
+            )
+            Text(
+                text = stringResource(R.string.records_dosage) + ": " + medication.dosage,
+                fontSize = 13.sp
+            )
+            Text(
+                text = stringResource(R.string.records_started_corrected) + ": " + DateFormats.shortDate(medication.startedAt),
+                fontSize = 13.sp
+            )
+            Text(
+                text = stringResource(R.string.records_finish_date) + ": " + DateFormats.shortDate(medication.finishAt),
+                fontSize = 13.sp
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            val statusText = when {
+                isOverdue -> stringResource(R.string.records_status_overdue)
+                isDueSoon -> stringResource(R.string.records_status_due_soon, daysLeft)
+                else -> stringResource(R.string.records_status_on_track)
+            }
+            val statusColor = when {
+                isOverdue -> MaterialTheme.colorScheme.error
+                isDueSoon -> MaterialTheme.colorScheme.primary
+                else -> MaterialTheme.colorScheme.onSurfaceVariant
+            }
+
+            Text(
+                text = stringResource(R.string.records_status) + ": " + statusText,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = statusColor
+            )
+
+            if (isOverdue || isDueSoon) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = stringResource(
+                        R.string.records_medication_alert,
+                        medication.name,
+                        if (isOverdue) stringResource(R.string.records_status_overdue) else stringResource(R.string.records_status_due_soon, daysLeft)
+                    ),
+                    fontSize = 11.sp,
+                    color = statusColor
+                )
+            }
+        }
     }
 }
