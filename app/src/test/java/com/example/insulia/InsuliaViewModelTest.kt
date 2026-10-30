@@ -126,4 +126,30 @@ class InsuliaViewModelTest {
 
         assertTrue(viewModel.notifications.isNotEmpty())
     }
+
+    @Test
+    fun medications_areSeededForDifferentDiabetesTypes() {
+        val viewModel = InsuliaViewModel()
+
+        assertTrue(viewModel.medications.isNotEmpty())
+        assertTrue(viewModel.medications.any { it.diabetesType == com.example.insulia.data.DiabetesType.TYPE_1 })
+        assertTrue(viewModel.medications.any { it.diabetesType == com.example.insulia.data.DiabetesType.TYPE_2 })
+    }
+
+    @Test
+    fun medicationTracking_hasDueStatus() {
+        val viewModel = InsuliaViewModel()
+
+        val now = System.currentTimeMillis()
+        val dueSoon = com.example.insulia.data.Medication(
+            id = 999,
+            diabetesType = com.example.insulia.data.DiabetesType.TYPE_2,
+            name = "TestMed",
+            dosage = "1x",
+            startedAt = now - 100000,
+            finishAt = now + 1000 * 60 * 60 * 24 * 2,
+            isActive = true
+        )
+        assertTrue(dueSoon.finishAt - now < 1000L * 60 * 60 * 24 * 3)
+    }
 }

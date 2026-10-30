@@ -53,7 +53,7 @@ class InsuliaViewModel(
     var medications by mutableStateOf<List<Medication>>(emptyList())
         private set
 
-    var isLoading by mutableStateOf(true)
+    var isLoading by mutableStateOf(false)
         private set
 
     var dataError by mutableStateOf<String?>(null)
@@ -63,74 +63,62 @@ class InsuliaViewModel(
     private var lastTimestamp: Long = System.currentTimeMillis()
 
     init {
-        if (repository.isAvailable) {
-            try {
-                // Enable offline persistence if possible
-                try {
-                    val firestoreClass = Class.forName("com.google.firebase.firestore.FirebaseFirestore")
-                    val getInstanceFs = firestoreClass.getMethod("getInstance")
-                    val instance = getInstanceFs.invoke(null)
-                    val settingsClass = Class.forName("com.google.firebase.firestore.FirebaseFirestoreSettings")
-                    val builderClass = Class.forName("com.google.firebase.firestore.FirebaseFirestoreSettings\$Builder")
-                    val builder = builderClass.getConstructor().newInstance()
-                    builderClass.getMethod("setPersistenceEnabled", Boolean::class.java).invoke(builder, true)
-                    val settings = builderClass.getMethod("build").invoke(builder)
-                    firestoreClass.getMethod("setFirestoreSettings", settingsClass).invoke(instance, settings)
-                } catch (_: Throwable) {
-                }
-
-                try {
-                    viewModelScope.launch {
-                        repository.observeProfile().collect {
-                            patient = it
-                            isLoading = false
-                        }
-                    }
-                    viewModelScope.launch {
-                        repository.observeReadings().collect {
-                            readings = it
-                            isLoading = false
-                        }
-                    }
-                    viewModelScope.launch {
-                        repository.observeFoodNotes().collect {
-                            foodNotes = it
-                            isLoading = false
-                        }
-                    }
-                    viewModelScope.launch {
-                        repository.observeAppointments().collect {
-                            appointments = it
-                            isLoading = false
-                        }
-                    }
-                    viewModelScope.launch {
-                        repository.observeMedications().collect {
-                            medications = it
-                            isLoading = false
-                        }
-                    }
-                    viewModelScope.launch {
-                        repository.observeNotifications().collect {
-                            notifications = it
-                            isLoading = false
-                        }
-                    }
-                    viewModelScope.launch {
-                        seedDemoDataIfNeeded()
-                    }
-                } catch (t: Throwable) {
-                    dataError = t.message
-                    seedDemoData()
-                }
-            } catch (t: Throwable) {
-                dataError = t.message
-                seedDemoData()
-            }
-        } else {
-            // Fallback for unit tests without Android/Firebase runtime
+        try {
             seedDemoData()
-            isLoading = false
+            if (repository.isAvailable) {
+                viewModelScope.launch {
+                    try {
+                        // Enable offline persistence if possible
+                        try {
+                            val firestoreClass = Class.forName("com.google.firebase.firestore.FirebaseFirestore")
+                            val getInstanceFs = firestoreClass.getMethod("getInstance")
+                            val instance = getInstanceFs.invoke(null)
+                            val settingsClass = Class.forName("com.google.firebase.firestore.FirebaseFirestoreSettings")
+                            val builderClass = Class.forName("com.google.firebase.firestore.FirebaseFirestoreSettings\$Builder")
+                            val builder = builderClass.getConstructor().newInstance()
+                            builderClass.getMethod("setPersistenceEnabled", Boolean::class.java).invoke(builder, true)
+                            val settings = builderClass.getMethod("build").invoke(builder)
+                            firestoreClass.getMethod("setFirestoreSettings", settingsClass).invoke(instance, settings)
+                        } catch (_: Throwable) {
+                        }
+
+                        try {
+                            repository.observeProfile().collect { patient = it }
+                        } catch (_: Throwable) {
+                        }
+                        try {
+                            repository.observeReadings().collect { readings = it }
+                        } catch (_: Throwable) {
+                        }
+                        try {
+                            repository.observeFoodNotes().collect { foodNotes = it }
+                        } catch (_: Throwable) {
+                        }
+                        try {
+                            repository.observeAppointments().collect { appointments = it }
+                        } catch (_: Throwable) {
+                        }
+                        try {
+                            repository.observeMedications().collect { medications = it }
+                        } catch (_: Throwable) {
+                        }
+                        try {
+                            repository.observeNotifications().collect { notifications = it }
+                        } catch (_: Throwable) {
+                        }
+                        try {
+                            seedDemoDataIfNeeded()
+                        } catch (_: Throwable) {
+                        }
+                    } catch (_: Throwable) {
+                    }
+                }
+            }
+        } catch (_: Throwable) {
+            try {
+                seedDemoData()
+            } catch (_: Throwable) {
+            }
         }
     }
 

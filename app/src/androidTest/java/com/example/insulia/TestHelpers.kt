@@ -44,12 +44,12 @@ const val GO_BACK = "Go back"
  */
 fun ComposeTestRule.openHome() {
     onNodeWithText(ScreenText.WELCOME).performClick()
-    onNodeWithText(ScreenText.HOME).assertExists()
+    onNodeWithText(ScreenText.HOME, useUnmergedTree = true).assertExists()
 }
 
 /** Taps an item in the bottom navigation bar. */
 fun ComposeTestRule.selectTab(label: String) {
-    onNodeWithContentDescription(label).performClick()
+    onNodeWithContentDescription(label, useUnmergedTree = true).performClick()
 }
 
 fun ComposeTestRule.openAlerts() {
