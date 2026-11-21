@@ -69,6 +69,21 @@ class InsuliaViewModel(
     var authBusy by mutableStateOf(false)
         private set
 
+    /** True once Firebase has restored or established the current session. */
+    var isAuthenticated by mutableStateOf(false)
+        private set
+
+    /** Authentication errors stay on the welcome screen so they can be retried. */
+    var authError by mutableStateOf<String?>(null)
+        private set
+
+    var authFormError by mutableStateOf<String?>(null)
+        private set
+
+    fun clearAuthFormError() {
+        authFormError = null
+    }
+
     /** Keeps generated timestamps strictly increasing. */
     private var lastTimestamp: Long = System.currentTimeMillis()
 
@@ -99,24 +114,40 @@ class InsuliaViewModel(
 
     init {
         refreshAccountState()
-        if (repository.isAvailable) {
-            // Finish authentication before the listeners start. This keeps the
-            // UID stable and lets the profile screen show the account state.
-            viewModelScope.launch {
-                try {
-                    repository.ensureSignedIn()
-                    refreshAccountState()
-                    startSync()
-                } catch (t: Throwable) {
-                    reportError("Could not sign in to Firebase", t)
-                }
-            }
-        } else {
-            // Firebase is not usable (offline test run, missing config or a
-            // device without Google Play services). Keep the app usable with
-            // in-memory sample content only. Nothing is written anywhere.
+        if (repository.isAuthAvailable && repository.isSignedIn) {
+            // Firebase restores persisted sessions itself. Reuse that session
+            // rather than creating another anonymous account on every launch.
+            isAuthenticated = true
+            startSync()
+        } else if (!repository.isAvailable) {
+            // Unit tests and builds without Firebase configuration retain the
+            // in-memory fixture data, but do not silently bypass sign-in.
             seedDemoData()
         }
+    }
+
+    /** Starts anonymous authentication after the patient chooses Get Started. */
+    fun authenticateForOnboarding() {
+        if (authBusy || isAuthenticated) return
+        authBusy = true
+        authError = null
+        viewModelScope.launch {
+            try {
+                repository.ensureSignedIn()
+                refreshAccountState()
+                isAuthenticated = true
+                startSync()
+            } catch (t: Throwable) {
+                authError = t.message?.takeIf { it.isNotBlank() }
+                    ?: "Could not sign in. Check your connection and try again."
+            } finally {
+                authBusy = false
+            }
+        }
+    }
+
+    fun clearAuthError() {
+        authError = null
     }
 
     // ---------------------------------------------------------------------
@@ -239,10 +270,26 @@ class InsuliaViewModel(
         isAnonymousAccount = repository.isAnonymousAccount
     }
 
+    fun signOut() {
+        syncGeneration++
+        syncJobs.forEach { it.cancel() }
+        syncJobs.clear()
+        repository.signOut()
+        isAuthenticated = false
+        accountEmail = null
+        isAnonymousAccount = true
+        patient = emptyPatient()
+        readings = emptyList()
+        foodNotes = emptyList()
+        appointments = emptyList()
+        medications = emptyList()
+        notifications = emptyList()
+    }
+
     fun linkAccount(email: String, password: String) {
         val validation = validateCredentials(email, password)
         if (validation != null) {
-            reportError(validation)
+            authFormError = validation
             return
         }
         if (authBusy) return
@@ -252,9 +299,11 @@ class InsuliaViewModel(
                 repository.linkAccount(email.trim(), password).fold(
                     onSuccess = {
                         refreshAccountState()
+                        isAuthenticated = true
+                        restartSync()
                         dataMessage = "Account created. Your records are safe."
                     },
-                    onFailure = { reportError(it.message ?: "Could not create the account", it) }
+                    onFailure = { authFormError = it.message ?: "Could not create the account" }
                 )
             } finally {
                 authBusy = false
@@ -265,7 +314,7 @@ class InsuliaViewModel(
     fun signInToAccount(email: String, password: String) {
         val validation = validateCredentials(email, password)
         if (validation != null) {
-            reportError(validation)
+            authFormError = validation
             return
         }
         if (authBusy) return
@@ -275,6 +324,7 @@ class InsuliaViewModel(
                 repository.signInToAccount(email.trim(), password).fold(
                     onSuccess = {
                         refreshAccountState()
+                        isAuthenticated = true
                         // A different account has a different UID, so the
                         // listeners must be pointed at the new document tree.
                         patient = emptyPatient()
@@ -286,7 +336,7 @@ class InsuliaViewModel(
                         restartSync()
                         dataMessage = "Signed in. Loading your records."
                     },
-                    onFailure = { reportError(it.message ?: "Could not sign in", it) }
+                    onFailure = { authFormError = it.message ?: "Could not sign in" }
                 )
             } finally {
                 authBusy = false
@@ -296,7 +346,7 @@ class InsuliaViewModel(
 
     fun sendPasswordReset(email: String) {
         if (email.isBlank() || !email.contains("@")) {
-            reportError("Enter a valid email address")
+            authFormError = "Enter a valid email address"
             return
         }
         if (authBusy) return
@@ -304,8 +354,11 @@ class InsuliaViewModel(
         viewModelScope.launch {
             try {
                 repository.sendPasswordReset(email.trim()).fold(
-                    onSuccess = { dataMessage = "Password reset email sent" },
-                    onFailure = { reportError(it.message ?: "Could not send the reset email", it) }
+                    onSuccess = {
+                        authFormError = null
+                        dataMessage = "Password reset email sent"
+                    },
+                    onFailure = { authFormError = it.message ?: "Could not send the reset email" }
                 )
             } finally {
                 authBusy = false

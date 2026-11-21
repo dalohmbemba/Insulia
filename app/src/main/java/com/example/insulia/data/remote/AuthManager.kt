@@ -37,6 +37,10 @@ class AuthManager(
 
     val uid: String? get() = auth?.currentUser?.uid
 
+    fun signOut() {
+        auth?.signOut()
+    }
+
     /**
      * Makes sure a user exists before any Firestore work is attempted.
      */
@@ -56,12 +60,12 @@ class AuthManager(
     suspend fun linkWithEmail(email: String, password: String): Result<Unit> = runCatching {
         val instance = auth ?: throw IllegalStateException("Firebase authentication is not available")
         val user = instance.currentUser
-            ?: throw IllegalStateException("No signed-in patient to upgrade")
-        if (!user.isAnonymous) {
+        if (user != null && !user.isAnonymous) {
             throw IllegalStateException("This account already has an email sign-in method")
         }
         val credential = EmailAuthProvider.getCredential(email.trim(), password)
-        user.linkWithCredential(credential).await()
+        if (user == null) instance.createUserWithEmailAndPassword(email.trim(), password).await()
+        else user.linkWithCredential(credential).await()
         Unit
     }.mapError()
 

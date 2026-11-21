@@ -29,13 +29,13 @@ import com.example.insulia.data.Medication
 import com.example.insulia.data.ReadingContext
 import com.example.insulia.navigation.Screen
 import com.example.insulia.ui.components.QuickActionType
-import com.example.insulia.ui.dialogs.AccountDialog
 import com.example.insulia.ui.dialogs.BookingDialog
 import com.example.insulia.ui.dialogs.EditProfileDialog
 import com.example.insulia.ui.dialogs.FoodNoteDialog
 import com.example.insulia.ui.dialogs.LogReadingDialog
 import com.example.insulia.ui.dialogs.MedicationDialog
 import com.example.insulia.ui.screens.AlertsScreen
+import com.example.insulia.ui.screens.AuthScreen
 import com.example.insulia.ui.screens.AppointmentsScreen
 import com.example.insulia.ui.screens.FoodNotesScreen
 import com.example.insulia.ui.screens.GlucoseLevelsScreen
@@ -49,15 +49,17 @@ private sealed interface AppDialog {
     data object LogReading : AppDialog
     data object FoodNote : AppDialog
     data object Booking : AppDialog
-    data object Account : AppDialog
     data object EditProfile : AppDialog
     data class MedicationEditor(val medication: Medication, val isNew: Boolean) : AppDialog
 }
 
 @Composable
 fun InsuliaApp(viewModel: InsuliaViewModel = viewModel()) {
-    val backStack = remember { mutableStateListOf<Screen>(Screen.Welcome) }
+    val backStack = remember(viewModel) {
+        mutableStateListOf(if (viewModel.isAuthenticated) Screen.Home else Screen.Welcome)
+    }
     var dialog by remember { mutableStateOf<AppDialog?>(null) }
+    var showAuthScreen by remember { mutableStateOf(false) }
     var showBookingConfirmation by remember { mutableStateOf(false) }
     var currentTab by remember { mutableStateOf<Screen>(Screen.Home) }
     var editingAppointment by remember { mutableStateOf<Appointment?>(null) }
@@ -74,6 +76,16 @@ fun InsuliaApp(viewModel: InsuliaViewModel = viewModel()) {
         val message = viewModel.dataMessage ?: return@LaunchedEffect
         snackbarHostState.showSnackbar(message, duration = SnackbarDuration.Short)
         viewModel.clearDataMessage()
+    }
+
+    LaunchedEffect(viewModel.isAuthenticated) {
+        if (viewModel.isAuthenticated) {
+            dialog = null
+            if (backStack.last() == Screen.Welcome) {
+                backStack.clear()
+                backStack.add(Screen.Home)
+            }
+        }
     }
 
     val selectedTab = when (currentScreen) {
@@ -115,14 +127,16 @@ fun InsuliaApp(viewModel: InsuliaViewModel = viewModel()) {
         dialog = AppDialog.Booking
     }
 
-    BackHandler(enabled = backStack.size > 1) { goBack() }
+    BackHandler(enabled = showAuthScreen || backStack.size > 1) {
+        if (showAuthScreen) showAuthScreen = false else goBack()
+    }
 
     Box(
         modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
             .windowInsetsPadding(WindowInsets.systemBars)
     ) {
         when (currentScreen) {
-            Screen.Welcome -> WelcomeScreen(onGetStarted = { replaceRoot(Screen.Home) })
+            Screen.Welcome -> WelcomeScreen(onGetStarted = { showAuthScreen = true })
 
             Screen.Home -> HomeScreen(
                 patient = viewModel.patient,
@@ -144,10 +158,12 @@ fun InsuliaApp(viewModel: InsuliaViewModel = viewModel()) {
                 accountEmail = viewModel.accountEmail,
                 onBack = ::goBack,
                 onSelectTab = ::selectTab,
-                onQuickAction = ::handleQuickAction,
                 onOpen = ::open,
                 onEditProfile = { dialog = AppDialog.EditProfile },
-                onManageAccount = { dialog = AppDialog.Account },
+                onLogout = {
+                    viewModel.signOut()
+                    replaceRoot(Screen.Welcome)
+                },
                 selectedTab = selectedTab
             )
 
@@ -205,19 +221,15 @@ fun InsuliaApp(viewModel: InsuliaViewModel = viewModel()) {
             }
             AppDialog.Booking -> BookingDialog(
                 initial = editingAppointment,
-                onDismiss = { editingAppointment = null; dialog = null }
-            ) { patientName, clinicName, dateMillis, lastVisit, isEmergency ->
-                val editing = editingAppointment
-                if (editing == null) viewModel.bookAppointment(patientName, clinicName, dateMillis, lastVisit, isEmergency)
-                else viewModel.rescheduleAppointment(editing.id, patientName, clinicName, dateMillis, lastVisit, isEmergency)
-                showBookingConfirmation = true
-                editingAppointment = null
-                dialog = null
-            }
-            AppDialog.Account -> AccountDialog(
-                viewModel.isAnonymousAccount, viewModel.accountEmail, viewModel.authBusy,
-                { dialog = null }, viewModel::linkAccount, viewModel::signInToAccount,
-                viewModel::sendPasswordReset
+                onDismiss = { editingAppointment = null; dialog = null },
+                onBook = { patientName, clinicName, dateMillis, lastVisit, isEmergency ->
+                    val editing = editingAppointment
+                    if (editing == null) viewModel.bookAppointment(patientName, clinicName, dateMillis, lastVisit, isEmergency)
+                    else viewModel.rescheduleAppointment(editing.id, patientName, clinicName, dateMillis, lastVisit, isEmergency)
+                    showBookingConfirmation = true
+                    editingAppointment = null
+                    dialog = null
+                }
             )
             AppDialog.EditProfile -> EditProfileDialog(viewModel.patient, { dialog = null }) {
                 viewModel.updateProfile(it); dialog = null
@@ -229,5 +241,17 @@ fun InsuliaApp(viewModel: InsuliaViewModel = viewModel()) {
         }
 
         SnackbarHost(snackbarHostState, Modifier.align(Alignment.BottomCenter).padding(16.dp))
+
+        if (currentScreen == Screen.Welcome && showAuthScreen) {
+            AuthScreen(
+                busy = viewModel.authBusy,
+                errorMessage = viewModel.authFormError,
+                onClearError = viewModel::clearAuthFormError,
+                onCreateAccount = viewModel::linkAccount,
+                onSignIn = viewModel::signInToAccount,
+                onResetPassword = viewModel::sendPasswordReset
+            )
+        }
+
     }
 }
