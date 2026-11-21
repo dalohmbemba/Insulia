@@ -20,6 +20,7 @@
     <string name="home_diet_suggestion">Diet Suggestion</string>
     <string name="home_latest_food_note">Latest food note</string>
     <string name="home_no_food_notes">No food notes yet. Tap “Food note” to add one.</string>
+    <string name="food_note_delete">Delete food note</string>
 
     <!-- Quick actions -->
     <string name="quick_log_reading">Log reading</string>
@@ -69,7 +70,7 @@
 
     <!-- Notifications -->
     <string name="page_notifications">Notifications</string>
-    <string name="notifications_time_label">Today · Demo notification</string>
+    <string name="notifications_time_label">Today</string>
     <string name="notification_glucose_title">Glucose reminder</string>
     <string name="notification_glucose_body">Remember to check and record your glucose level.</string>
     <string name="notification_medication_title">Medication reminder</string>
@@ -205,4 +206,61 @@
     <string name="diet_snack_pm_food">Plain yoghurt or a small handful of nuts</string>
     <string name="diet_dinner_time">19:00</string>
     <string name="diet_dinner_food">Rice, vegetables and chicken or beans</string>
+
+    <!-- Account -->
+    <string name="profile_account_title">Account</string>
+    <string name="profile_account_anonymous">Your records are linked to this device account. Add an email so you can sign back in after reinstalling Insulia.</string>
+    <string name="profile_account_linked">Signed in as %1$s</string>
+    <string name="profile_account_set_up">Set up account</string>
+    <string name="profile_account_manage">Manage account</string>
+    <string name="account_dialog_title">Secure your account</string>
+    <string name="account_dialog_signed_in">Your account</string>
+    <string name="account_hint_link">Add an email and password to keep access to your records if you change phones or reinstall the app. Your existing records stay linked to this account.</string>
+    <string name="account_hint_signed_in">You can sign in with this email on another phone to see the same records.</string>
+    <string name="account_email">Email</string>
+    <string name="account_password">Password</string>
+    <string name="account_password_hint">Use at least 6 characters.</string>
+    <string name="account_sign_in_hint">Already have an account? Sign in with its email and password. Records saved on this device are not merged into it.</string>
+    <string name="account_create">Create account</string>
+    <string name="account_sign_in">Sign in</string>
+    <string name="account_reset">Forgot password</string>
+
+    <!-- Profile editing -->
+    <string name="profile_edit">Edit profile</string>
+    <string name="profile_name_placeholder">Your profile</string>
+    <string name="profile_edit_title">Edit profile</string>
+    <string name="profile_full_name">Full name</string>
+    <string name="profile_short_name">Preferred name</string>
+    <string name="profile_dob">Date of birth</string>
+    <string name="profile_patient_id">Patient ID</string>
+    <string name="profile_patient_id_pending">Not assigned yet</string>
+    <string name="profile_patient_id_copy">Copy</string>
+    <string name="profile_patient_id_copied">Copied</string>
+    <string name="profile_patient_id_hint">This ID is created automatically and cannot be changed.</string>
+    <string name="profile_clinic">Clinic</string>
+    <string name="profile_last_visit">Last clinic visit</string>
+    <string name="profile_diabetes_type">Diabetes type</string>
+
+    <!-- Medication management -->
+    <string name="medication_add">Add medication</string>
+    <string name="medication_edit_title">Edit medication</string>
+    <string name="medication_new_title">Add medication</string>
+    <string name="medication_name">Medication name</string>
+    <string name="medication_dosage">Dosage / instructions</string>
+    <string name="medication_started">Started</string>
+    <string name="medication_finish">Finish</string>
+    <string name="medication_active">Currently taking</string>
+    <string name="medication_edit">Edit</string>
+    <string name="medication_delete">Delete</string>
+    <string name="medication_stop">Mark as stopped</string>
+    <string name="medication_resume">Mark as active</string>
+    <string name="medication_stop_short">Stop</string>
+    <string name="medication_resume_short">Resume</string>
+    <string name="records_status_stopped">Stopped</string>
+
+    <!-- Appointment management -->
+    <string name="booking_reschedule_title">Reschedule appointment</string>
+    <string name="appointments_reschedule">Reschedule</string>
+    <string name="appointments_cancel">Cancel appointment</string>
+    <string name="appointments_delete">Delete</string>
 </resources>

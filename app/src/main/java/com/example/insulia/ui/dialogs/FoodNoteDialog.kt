@@ -38,7 +38,16 @@ fun FoodNoteDialog(
     var meal by remember { mutableStateOf(MealType.BREAKFAST) }
     var note by remember { mutableStateOf("") }
 
-    val isValid = note.isNotBlank()
+    // A food note must describe food, so it needs at least one letter.
+    // Entries made only of digits and punctuation (for example "123") are
+    // rejected instead of being saved as a meaningless note.
+    fun isValidFoodNote(text: String): Boolean {
+        val trimmed = text.trim()
+        return trimmed.isNotEmpty() && trimmed.any { it.isLetter() }
+    }
+
+    val isValid = isValidFoodNote(note)
+    val showError = note.isNotEmpty() && !isValid
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -54,8 +63,8 @@ fun FoodNoteDialog(
                     onValueChange = { note = it },
                     label = { Text(stringResource(R.string.dialog_food_note_text)) },
                     singleLine = true,
-                    isError = note.isNotEmpty() && !isValid,
-                    supportingText = if (note.isNotEmpty() && !isValid) {
+                    isError = showError,
+                    supportingText = if (showError) {
                         { Text(stringResource(R.string.dialog_food_note_text_error)) }
                     } else {
                         null
@@ -93,7 +102,11 @@ fun FoodNoteDialog(
         },
         confirmButton = {
             TextButton(
-                onClick = { onSave(meal, note.trim()) },
+                onClick = {
+                    if (isValidFoodNote(note)) {
+                        onSave(meal, note.trim())
+                    }
+                },
                 enabled = isValid
             ) {
                 Text(stringResource(R.string.dialog_save))

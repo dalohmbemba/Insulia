@@ -17,6 +17,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -43,6 +44,8 @@ fun AppointmentsScreen(
     onBack: () -> Unit,
     onSelectTab: (Screen) -> Unit,
     onBookAppointment: () -> Unit,
+    onReschedule: (Appointment) -> Unit = {},
+    onDeleteAppointment: (Appointment) -> Unit = {},
     selectedTab: Screen
 ) {
     Column(
@@ -94,8 +97,29 @@ fun AppointmentsScreen(
                         text = "${upcoming.clinicName} · ${stringResource(upcoming.commentRes)}",
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 14.dp)
+                        modifier = Modifier.padding(start = 16.dp, end = 16.dp)
                     )
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 8.dp, end = 8.dp, bottom = 6.dp),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        TextButton(onClick = { onReschedule(upcoming) }) {
+                            Text(
+                                text = stringResource(R.string.appointments_reschedule),
+                                fontSize = 12.sp
+                            )
+                        }
+                        TextButton(onClick = { onDeleteAppointment(upcoming) }) {
+                            Text(
+                                text = stringResource(R.string.appointments_cancel),
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    }
                 }
             }
 
@@ -206,6 +230,19 @@ fun AppointmentsScreen(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.width(96.dp)
                             )
+                        }
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.End
+                        ) {
+                            TextButton(onClick = { onDeleteAppointment(appointment) }) {
+                                Text(
+                                    text = stringResource(R.string.appointments_delete),
+                                    fontSize = 11.sp,
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                            }
                         }
                     }
                 }

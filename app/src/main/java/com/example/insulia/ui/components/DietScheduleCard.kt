@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -81,7 +82,8 @@ fun DietScheduleCard(
 @Composable
 fun LatestFoodNoteCard(
     note: FoodNote?,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onDelete: (() -> Unit)? = null
 ) {
     InsuliaCard(modifier = modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(12.dp)) {
@@ -114,6 +116,19 @@ fun LatestFoodNoteCard(
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+
+                if (onDelete != null) {
+                    TextButton(
+                        onClick = onDelete,
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)
+                    ) {
+                        Text(
+                            text = stringResource(R.string.food_note_delete),
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
             }
         }
     }

@@ -48,28 +48,33 @@ fun AlertsScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp, vertical = 12.dp)
         ) {
-            notifications.forEach { item ->
+            notifications.sortedByDescending { it.timestamp }.forEach { item ->
                 InsuliaCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = 12.dp)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            text = stringResource(item.titleRes),
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
+                        val titleText = item.title ?: if (item.titleRes != 0) stringResource(item.titleRes) else ""
+                        val bodyText = item.body ?: if (item.bodyRes != 0) stringResource(item.bodyRes) else ""
 
-                        Spacer(modifier = Modifier.height(6.dp))
+                        if (titleText.isNotEmpty()) {
+                            Text(
+                                text = titleText,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                        }
 
-                        Text(
-                            text = stringResource(item.bodyRes),
-                            fontSize = 13.sp
-                        )
-
-                        Spacer(modifier = Modifier.height(6.dp))
+                        if (bodyText.isNotEmpty()) {
+                            Text(
+                                text = bodyText,
+                                fontSize = 13.sp
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                        }
 
                         Text(
                             text = stringResource(R.string.notifications_time_label),

@@ -1,28 +1,40 @@
 package com.example.insulia
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.activity.compose.BackHandler
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.insulia.data.Appointment
 import com.example.insulia.data.InsuliaViewModel
+import com.example.insulia.data.Medication
 import com.example.insulia.data.ReadingContext
 import com.example.insulia.navigation.Screen
 import com.example.insulia.ui.components.QuickActionType
+import com.example.insulia.ui.dialogs.AccountDialog
 import com.example.insulia.ui.dialogs.BookingDialog
+import com.example.insulia.ui.dialogs.EditProfileDialog
 import com.example.insulia.ui.dialogs.FoodNoteDialog
 import com.example.insulia.ui.dialogs.LogReadingDialog
+import com.example.insulia.ui.dialogs.MedicationDialog
 import com.example.insulia.ui.screens.AlertsScreen
 import com.example.insulia.ui.screens.AppointmentsScreen
 import com.example.insulia.ui.screens.GlucoseLevelsScreen
@@ -37,6 +49,9 @@ private sealed interface AppDialog {
     data object LogReading : AppDialog
     data object FoodNote : AppDialog
     data object Booking : AppDialog
+    data object Account : AppDialog
+    data object EditProfile : AppDialog
+    data class MedicationEditor(val medication: Medication, val isNew: Boolean) : AppDialog
 }
 
 /**
@@ -55,8 +70,31 @@ fun InsuliaApp(
     var dialog by remember { mutableStateOf<AppDialog?>(null) }
     var showBookingConfirmation by remember { mutableStateOf(false) }
     var currentTab by remember { mutableStateOf<Screen>(Screen.Home) }
+    var editingAppointment by remember { mutableStateOf<Appointment?>(null) }
+
+    val snackbarHostState = remember { SnackbarHostState() }
 
     val currentScreen = backStack.last()
+
+    // Every failed save or sync is surfaced instead of being swallowed.
+    LaunchedEffect(viewModel.dataError) {
+        val message = viewModel.dataError ?: return@LaunchedEffect
+        snackbarHostState.showSnackbar(
+            message = message,
+            withDismissAction = true,
+            duration = SnackbarDuration.Long
+        )
+        viewModel.clearDataError()
+    }
+
+    LaunchedEffect(viewModel.dataMessage) {
+        val message = viewModel.dataMessage ?: return@LaunchedEffect
+        snackbarHostState.showSnackbar(
+            message = message,
+            duration = SnackbarDuration.Short
+        )
+        viewModel.clearDataMessage()
+    }
 
     /**
      * The tab that is highlighted in the bottom navigation.
@@ -112,6 +150,11 @@ fun InsuliaApp(
         }
     }
 
+    fun startBooking(initial: Appointment? = null) {
+        editingAppointment = initial
+        dialog = AppDialog.Booking
+    }
+
     // The system back gesture follows the same stack as the in-app back arrow.
     BackHandler(enabled = backStack.size > 1) {
         goBack()
@@ -135,6 +178,7 @@ fun InsuliaApp(
                 latestFoodNote = viewModel.latestFoodNote,
                 onQuickAction = ::handleQuickAction,
                 onSelectTab = ::selectTab,
+                onDeleteFoodNote = viewModel::deleteFoodNote,
                 selectedTab = selectedTab
             )
 
@@ -147,10 +191,13 @@ fun InsuliaApp(
 
             Screen.Profile -> ProfileScreen(
                 patient = viewModel.patient,
+                accountEmail = viewModel.accountEmail,
                 onBack = ::goBack,
                 onSelectTab = ::selectTab,
                 onQuickAction = ::handleQuickAction,
                 onOpen = ::open,
+                onEditProfile = { dialog = AppDialog.EditProfile },
+                onManageAccount = { dialog = AppDialog.Account },
                 selectedTab = selectedTab
             )
 
@@ -163,6 +210,21 @@ fun InsuliaApp(
                 medications = viewModel.medications,
                 onBack = ::goBack,
                 onSelectTab = ::selectTab,
+                onAddMedication = {
+                    dialog = AppDialog.MedicationEditor(
+                        medication = viewModel.newMedication(),
+                        isNew = true
+                    )
+                },
+                onEditMedication = { medication ->
+                    dialog = AppDialog.MedicationEditor(medication = medication, isNew = false)
+                },
+                onDeleteMedication = { medication ->
+                    viewModel.deleteMedication(medication.id)
+                },
+                onToggleMedication = { medication ->
+                    viewModel.setMedicationActive(medication.id, !medication.isActive)
+                },
                 selectedTab = selectedTab
             )
 
@@ -187,12 +249,16 @@ fun InsuliaApp(
                 showConfirmation = showBookingConfirmation,
                 onBack = ::goBack,
                 onSelectTab = ::selectTab,
-                onBookAppointment = { dialog = AppDialog.Booking },
+                onBookAppointment = { startBooking() },
+                onReschedule = { appointment -> startBooking(appointment) },
+                onDeleteAppointment = { appointment ->
+                    viewModel.deleteAppointment(appointment.id)
+                },
                 selectedTab = selectedTab
             )
         }
 
-        when (dialog) {
+        when (val shownDialog = dialog) {
             AppDialog.LogReading -> LogReadingDialog(
                 onDismiss = { dialog = null },
                 onSave = { value, context: ReadingContext ->
@@ -210,21 +276,74 @@ fun InsuliaApp(
             )
 
             AppDialog.Booking -> BookingDialog(
-                onDismiss = { dialog = null },
+                initial = editingAppointment,
+                onDismiss = {
+                    editingAppointment = null
+                    dialog = null
+                },
                 onBook = { patientName, clinicName, dateMillis, lastVisit, isEmergency ->
-                    viewModel.bookAppointment(
-                        patientName = patientName,
-                        clinicName = clinicName,
-                        dateMillis = dateMillis,
-                        lastVisit = lastVisit,
-                        isEmergency = isEmergency
-                    )
+                    val editing = editingAppointment
+                    if (editing == null) {
+                        viewModel.bookAppointment(
+                            patientName = patientName,
+                            clinicName = clinicName,
+                            dateMillis = dateMillis,
+                            lastVisit = lastVisit,
+                            isEmergency = isEmergency
+                        )
+                    } else {
+                        viewModel.rescheduleAppointment(
+                            id = editing.id,
+                            patientName = patientName,
+                            clinicName = clinicName,
+                            dateMillis = dateMillis,
+                            lastVisit = lastVisit,
+                            isEmergency = isEmergency
+                        )
+                    }
                     showBookingConfirmation = true
+                    editingAppointment = null
+                    dialog = null
+                }
+            )
+
+            AppDialog.Account -> AccountDialog(
+                isAnonymous = viewModel.isAnonymousAccount,
+                accountEmail = viewModel.accountEmail,
+                busy = viewModel.authBusy,
+                onDismiss = { dialog = null },
+                onCreateAccount = viewModel::linkAccount,
+                onSignIn = viewModel::signInToAccount,
+                onResetPassword = viewModel::sendPasswordReset
+            )
+
+            AppDialog.EditProfile -> EditProfileDialog(
+                patient = viewModel.patient,
+                onDismiss = { dialog = null },
+                onSave = { updated ->
+                    viewModel.updateProfile(updated)
+                    dialog = null
+                }
+            )
+
+            is AppDialog.MedicationEditor -> MedicationDialog(
+                initial = shownDialog.medication,
+                isNew = shownDialog.isNew,
+                onDismiss = { dialog = null },
+                onSave = { medication ->
+                    viewModel.addOrUpdateMedication(medication)
                     dialog = null
                 }
             )
 
             null -> Unit
         }
+
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(16.dp)
+        )
     }
 }

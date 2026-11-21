@@ -32,6 +32,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.example.insulia.R
+import com.example.insulia.data.Appointment
 import com.example.insulia.data.DateFormats
 
 /**
@@ -50,13 +51,14 @@ fun BookingDialog(
         dateMillis: Long?,
         lastVisit: String,
         isEmergency: Boolean
-    ) -> Unit
+    ) -> Unit,
+    initial: Appointment? = null
 ) {
-    var patientName by remember { mutableStateOf("") }
-    var clinicName by remember { mutableStateOf("") }
-    var lastVisit by remember { mutableStateOf("") }
-    var dateMillis by remember { mutableStateOf<Long?>(null) }
-    var isEmergency by remember { mutableStateOf(false) }
+    var patientName by remember { mutableStateOf(initial?.patientName.orEmpty()) }
+    var clinicName by remember { mutableStateOf(initial?.clinicName.orEmpty()) }
+    var lastVisit by remember { mutableStateOf(initial?.lastVisit.orEmpty()) }
+    var dateMillis by remember { mutableStateOf(initial?.dateMillis) }
+    var isEmergency by remember { mutableStateOf(initial?.isEmergency ?: false) }
     var pickingDate by remember { mutableStateOf(false) }
 
     val datePickerState = rememberDatePickerState(initialSelectedDateMillis = dateMillis)
@@ -65,7 +67,17 @@ fun BookingDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.booking_dialog_title)) },
+        title = {
+            Text(
+                stringResource(
+                    if (initial == null) {
+                        R.string.booking_dialog_title
+                    } else {
+                        R.string.booking_reschedule_title
+                    }
+                )
+            )
+        },
         text = {
             Column(
                 modifier = Modifier

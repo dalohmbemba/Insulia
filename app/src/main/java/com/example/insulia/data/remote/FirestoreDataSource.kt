@@ -7,13 +7,19 @@ import com.example.insulia.data.GlucoseReading
 import com.example.insulia.data.MealType
 import com.example.insulia.data.Medication
 import com.example.insulia.data.NotificationItem
+import com.example.insulia.data.NotificationReconciler
+import com.example.insulia.data.PatientIdAllocator
+import com.example.insulia.data.PatientIdFormat
 import com.example.insulia.data.PatientProfile
 import com.example.insulia.data.ReadingContext
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.CollectionReference
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.PropertyName
 import com.google.firebase.firestore.SetOptions
+import com.google.firebase.firestore.Transaction
 import com.google.firebase.firestore.ktx.toObject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -43,25 +49,28 @@ class FirestoreDataSource(
     private val authInstance: FirebaseAuth
         get() = auth ?: throw IllegalStateException("Firebase not initialized")
 
-    private val uidLock = kotlinx.coroutines.sync.Mutex()
-    private var cachedUid: String? = null
-
+    /**
+     * The UID of the currently signed-in patient.
+     *
+     * The value is read from Firebase Auth on every call instead of being
+     * cached, so switching from the anonymous session to an existing
+     * email/password account immediately points Firestore at the right data.
+     */
     private suspend fun uid(): String {
-        cachedUid?.let { return it }
+        val authInst = authInstance
+        authInst.currentUser?.let { return it.uid }
+        // Several Firestore flows start at the same time on first launch. The
+        // lock makes sure only one anonymous sign-in is attempted.
         return uidLock.withLock {
-            cachedUid?.let { return@withLock it }
-            val authInst = authInstance
-            val current = authInst.currentUser
-            val uid = if (current != null) {
-                current.uid
-            } else {
+            authInst.currentUser?.uid ?: run {
                 val result = authInst.signInAnonymously().await()
-                result.user?.uid ?: throw IllegalStateException("Failed to authenticate anonymously")
+                result.user?.uid
+                    ?: throw IllegalStateException("Failed to authenticate anonymously")
             }
-            cachedUid = uid
-            uid
         }
     }
+
+    private val uidLock = Mutex()
 
     private suspend fun userDoc() = firestoreInstance.collection("users").document(uid())
 
@@ -71,63 +80,26 @@ class FirestoreDataSource(
     private suspend fun medicationsCollection() = userDoc().collection("medications")
     private suspend fun notificationsCollection() = userDoc().collection("notifications")
 
-    fun observeProfile(): Flow<PatientProfile> = callbackFlow {
+    fun observeProfile(): Flow<PatientProfile?> = callbackFlow {
         var registration: ListenerRegistration? = null
         val job = scope.launch {
             try {
                 val doc = userDoc()
                 registration = doc.addSnapshotListener { snapshot, error ->
                     if (error != null) {
-                        trySend(
-                            PatientProfile(
-                                fullName = "Madalo Mbemba",
-                                shortName = "Madalo",
-                                dateOfBirth = "12 June 2002 (sample)",
-                                patientId = "INS-00125 (sample)",
-                                clinic = "Queen Elizabeth Central Hospital (sample)",
-                                lastClinicVisit = "18 September 2026 (sample)",
-                                diabetesType = DiabetesType.TYPE_2
-                            )
-                        )
+                        // Never show made-up patient details. An unreadable
+                        // profile stays absent and the error is reported.
+                        close(error)
                         return@addSnapshotListener
                     }
-                    if (snapshot != null && snapshot.exists()) {
-                        val profile = snapshot.toObject<PatientProfileDto>()?.toModel() ?: PatientProfile(
-                            fullName = "Madalo Mbemba",
-                            shortName = "Madalo",
-                            dateOfBirth = "12 June 2002 (sample)",
-                            patientId = "INS-00125 (sample)",
-                            clinic = "Queen Elizabeth Central Hospital (sample)",
-                            lastClinicVisit = "18 September 2026 (sample)",
-                            diabetesType = DiabetesType.TYPE_2
-                        )
-                        trySend(profile)
-                    } else {
-                        trySend(
-                            PatientProfile(
-                                fullName = "Madalo Mbemba",
-                                shortName = "Madalo",
-                                dateOfBirth = "12 June 2002 (sample)",
-                                patientId = "INS-00125 (sample)",
-                                clinic = "Queen Elizabeth Central Hospital (sample)",
-                                lastClinicVisit = "18 September 2026 (sample)",
-                                diabetesType = DiabetesType.TYPE_2
-                            )
-                        )
-                    }
+                    val profile = snapshot
+                        ?.takeIf { it.exists() }
+                        ?.toObject<PatientProfileDto>()
+                        ?.toModel()
+                    trySend(profile)
                 }
-            } catch (_: Throwable) {
-                trySend(
-                    PatientProfile(
-                        fullName = "Madalo Mbemba",
-                        shortName = "Madalo",
-                        dateOfBirth = "12 June 2002 (sample)",
-                        patientId = "INS-00125 (sample)",
-                        clinic = "Queen Elizabeth Central Hospital (sample)",
-                        lastClinicVisit = "18 September 2026 (sample)",
-                        diabetesType = DiabetesType.TYPE_2
-                    )
-                )
+            } catch (t: Throwable) {
+                close(t)
             }
         }
         awaitClose {
@@ -141,21 +113,111 @@ class FirestoreDataSource(
         doc.set(profile.toDto(), SetOptions.merge()).await()
     }
 
+    /**
+     * Returns the patient's permanent Patient ID, assigning one when needed.
+     *
+     * The profile read, the uniqueness check, the reservation and the profile
+     * update all happen in one Firestore transaction. If another patient has
+     * already reserved a generated value, [PatientIdAllocator] tries a fresh
+     * candidate inside the same transaction.
+     *
+     * Existing IDs are returned unchanged. Older profiles that have an ID but
+     * no reservation get a reservation so that another patient cannot claim
+     * the ID later.
+     *
+     * @return the ID, or `null` when the profile has not reached the server
+     * yet (for example a profile created while offline). The caller retries.
+     */
+    suspend fun ensurePatientId(): String? {
+        val firestore = firestoreInstance
+        val uid = uid()
+        val userRef = firestore.collection("users").document(uid)
+        val patientIds = firestore.collection("patientIds")
+
+        return firestore.runTransaction { transaction ->
+            val profile = transaction.get(userRef)
+            if (!profile.exists()) {
+                return@runTransaction null
+            }
+
+            val existing = profile.getString("patientId").orEmpty()
+            if (existing.isNotEmpty()) {
+                reserveExistingPatientId(transaction, patientIds, uid, existing)
+                return@runTransaction existing
+            }
+
+            val patientId = PatientIdAllocator.allocate(
+                isReserved = { candidate ->
+                    transaction.get(patientIds.document(candidate)).exists()
+                }
+            )
+            transaction.set(patientIds.document(patientId), reservation(uid))
+            transaction.update(
+                userRef,
+                mapOf(
+                    "patientId" to patientId,
+                    "patientIdAssignedAt" to FieldValue.serverTimestamp()
+                )
+            )
+            patientId
+        }.await()
+    }
+
+    /**
+     * Protects an ID that predates the reservation collection.
+     *
+     * The profile is not rewritten here, so the rest of its data and the exact
+     * existing ID are preserved. Malformed legacy values are left alone; they
+     * are still immutable because the profile rules only allow an assigned ID
+     * to stay the same.
+     */
+    private fun reserveExistingPatientId(
+        transaction: Transaction,
+        patientIds: CollectionReference,
+        uid: String,
+        patientId: String
+    ) {
+        if (!PatientIdFormat.isValid(patientId)) return
+
+        val reservationRef = patientIds.document(patientId)
+        val reservation = transaction.get(reservationRef)
+        if (reservation.exists()) {
+            if (reservation.getString("uid") != uid) {
+                try {
+                    android.util.Log.w(
+                        "Insulia",
+                        "Patient ID $patientId is already reserved by another profile"
+                    )
+                } catch (_: Throwable) {
+                    // Logging is unavailable in plain JVM tests.
+                }
+            }
+            return
+        }
+
+        transaction.set(reservationRef, reservation(uid))
+    }
+
+    private fun reservation(uid: String): Map<String, Any> = mapOf(
+        "uid" to uid,
+        "createdAt" to FieldValue.serverTimestamp()
+    )
+
     fun observeReadings(): Flow<List<GlucoseReading>> = callbackFlow {
         var registration: ListenerRegistration? = null
         val job = scope.launch {
             try {
                 registration = readingsCollection().addSnapshotListener { snapshot, error ->
                     if (error != null) {
-                        trySend(emptyList())
+                        close(error)
                         return@addSnapshotListener
                     }
                     val readings = snapshot?.documents?.mapNotNull { it.toObject<GlucoseReadingDto>()?.toModel(it.id) }
                         .orEmpty()
                     trySend(readings)
                 }
-            } catch (_: Throwable) {
-                trySend(emptyList())
+            } catch (t: Throwable) {
+                close(t)
             }
         }
         awaitClose {
@@ -179,15 +241,15 @@ class FirestoreDataSource(
             try {
                 registration = foodNotesCollection().addSnapshotListener { snapshot, error ->
                     if (error != null) {
-                        trySend(emptyList())
+                        close(error)
                         return@addSnapshotListener
                     }
                     val notes = snapshot?.documents?.mapNotNull { it.toObject<FoodNoteDto>()?.toModel(it.id) }
                         .orEmpty()
                     trySend(notes)
                 }
-            } catch (_: Throwable) {
-                trySend(emptyList())
+            } catch (t: Throwable) {
+                close(t)
             }
         }
         awaitClose {
@@ -200,21 +262,25 @@ class FirestoreDataSource(
         foodNotesCollection().document(note.id.toString()).set(note.toDto()).await()
     }
 
+    suspend fun deleteFoodNote(id: Long) {
+        foodNotesCollection().document(id.toString()).delete().await()
+    }
+
     fun observeAppointments(): Flow<List<Appointment>> = callbackFlow {
         var registration: ListenerRegistration? = null
         val job = scope.launch {
             try {
                 registration = appointmentsCollection().addSnapshotListener { snapshot, error ->
                     if (error != null) {
-                        trySend(emptyList())
+                        close(error)
                         return@addSnapshotListener
                     }
                     val appointments = snapshot?.documents?.mapNotNull { it.toObject<AppointmentDto>()?.toModel(it.id) }
                         .orEmpty()
                     trySend(appointments)
                 }
-            } catch (_: Throwable) {
-                trySend(emptyList())
+            } catch (t: Throwable) {
+                close(t)
             }
         }
         awaitClose {
@@ -232,21 +298,32 @@ class FirestoreDataSource(
         batch.commit().await()
     }
 
+    suspend fun saveAppointment(appointment: Appointment) {
+        appointmentsCollection()
+            .document(appointment.id.toString())
+            .set(appointment.toDto(), SetOptions.merge())
+            .await()
+    }
+
+    suspend fun deleteAppointment(id: Long) {
+        appointmentsCollection().document(id.toString()).delete().await()
+    }
+
     fun observeMedications(): Flow<List<Medication>> = callbackFlow {
         var registration: ListenerRegistration? = null
         val job = scope.launch {
             try {
                 registration = medicationsCollection().addSnapshotListener { snapshot, error ->
                     if (error != null) {
-                        trySend(emptyList())
+                        close(error)
                         return@addSnapshotListener
                     }
                     val medications = snapshot?.documents?.mapNotNull { it.toObject<MedicationDto>()?.toModel(it.id) }
                         .orEmpty()
                     trySend(medications)
                 }
-            } catch (_: Throwable) {
-                trySend(emptyList())
+            } catch (t: Throwable) {
+                close(t)
             }
         }
         awaitClose {
@@ -264,21 +341,35 @@ class FirestoreDataSource(
         batch.commit().await()
     }
 
+    suspend fun saveMedication(medication: Medication) {
+        medicationsCollection()
+            .document(medication.id.toString())
+            .set(medication.toDto(), SetOptions.merge())
+            .await()
+    }
+
+    suspend fun deleteMedication(id: Long) {
+        medicationsCollection().document(id.toString()).delete().await()
+    }
+
     fun observeNotifications(): Flow<List<NotificationItem>> = callbackFlow {
         var registration: ListenerRegistration? = null
         val job = scope.launch {
             try {
                 registration = notificationsCollection().addSnapshotListener { snapshot, error ->
                     if (error != null) {
-                        trySend(emptyList())
+                        close(error)
                         return@addSnapshotListener
                     }
-                    val notifications = snapshot?.documents?.mapNotNull { it.toObject<NotificationItemDto>()?.toModel() }
+                    val notifications = snapshot?.documents
+                        ?.mapNotNull { document ->
+                            document.toObject<NotificationItemDto>()?.toModel(document.id)
+                        }
                         .orEmpty()
                     trySend(notifications)
                 }
-            } catch (_: Throwable) {
-                trySend(emptyList())
+            } catch (t: Throwable) {
+                close(t)
             }
         }
         awaitClose {
@@ -287,15 +378,69 @@ class FirestoreDataSource(
         }
     }
 
+    /**
+     * Rebuilds derived notifications from the signed-in patient's Firestore
+     * records. Everything is done in one batch so the worker cannot leave a
+     * half-written alerts list if it is killed midway through.
+     */
+    suspend fun reconcileNotifications() {
+        val firestore = firestoreInstance
+        val uid = uid()
+        val userRef = firestore.collection("users").document(uid)
+        val readingsRef = userRef.collection("readings")
+        val medicationsRef = userRef.collection("medications")
+        val appointmentsRef = userRef.collection("appointments")
+        val notificationsRef = userRef.collection("notifications")
+
+        val readings = readingsRef.get().await().documents.mapNotNull { document ->
+            document.toObject<GlucoseReadingDto>()?.toModel(document.id)
+        }
+        val medications = medicationsRef.get().await().documents.mapNotNull { document ->
+            document.toObject<MedicationDto>()?.toModel(document.id)
+        }
+        val appointments = appointmentsRef.get().await().documents.mapNotNull { document ->
+            document.toObject<AppointmentDto>()?.toModel(document.id)
+        }
+
+        val desired = NotificationReconciler.build(readings, medications, appointments)
+        val existing = notificationsRef.get().await().documents
+        val desiredIds = desired.map { it.id }.toSet()
+        if (desired.isEmpty() && existing.isEmpty()) return
+
+        val batch = firestore.batch()
+        desired.forEach { notification ->
+            batch.set(
+                notificationsRef.document(notification.id),
+                notification.toDto(),
+                SetOptions.merge()
+            )
+        }
+        existing.forEach { document ->
+            if (document.id !in desiredIds) {
+                batch.delete(document.reference)
+            }
+        }
+        batch.commit().await()
+    }
+
     suspend fun saveNotifications(notifications: List<NotificationItem>) {
         try {
             val batch = firestoreInstance.batch()
-            notifications.forEachIndexed { index, notification ->
-                val ref = notificationsCollection().document(index.toString())
+            notifications.forEach { notification ->
+                val ref = notificationsCollection().document(notification.id)
                 batch.set(ref, notification.toDto(), SetOptions.merge())
             }
             batch.commit().await()
-        } catch (_: Throwable) {
+        } catch (t: Throwable) {
+            throw t
+        }
+    }
+
+    suspend fun deleteNotification(id: String) {
+        try {
+            notificationsCollection().document(id).delete().await()
+        } catch (t: Throwable) {
+            throw t
         }
     }
 
@@ -423,7 +568,7 @@ data class MedicationDto(
 
     fun toModel(id: String) = Medication(
         id = id.toLongOrNull() ?: 0L,
-        diabetesType = DiabetesType.valueOf(diabetesType),
+        diabetesType = try { DiabetesType.valueOf(diabetesType) } catch (_: Throwable) { DiabetesType.TYPE_2 },
         name = name,
         dosage = dosage,
         startedAt = startedAt,
@@ -442,15 +587,36 @@ fun Medication.toDto() = MedicationDto(
 )
 
 data class NotificationItemDto(
+    @get:PropertyName("id") @set:PropertyName("id") var id: String = "",
     @get:PropertyName("titleRes") @set:PropertyName("titleRes") var titleRes: Int = 0,
-    @get:PropertyName("bodyRes") @set:PropertyName("bodyRes") var bodyRes: Int = 0
+    @get:PropertyName("bodyRes") @set:PropertyName("bodyRes") var bodyRes: Int = 0,
+    @get:PropertyName("title") @set:PropertyName("title") var title: String? = null,
+    @get:PropertyName("body") @set:PropertyName("body") var body: String? = null,
+    @get:PropertyName("timestamp") @set:PropertyName("timestamp") var timestamp: Long = 0,
+    @get:PropertyName("type") @set:PropertyName("type") var type: String? = null,
+    @get:PropertyName("relatedId") @set:PropertyName("relatedId") var relatedId: String? = null
 ) {
-    constructor() : this(0, 0)
+    constructor() : this("", 0, 0, null, null, 0, null, null)
 
-    fun toModel() = NotificationItem(titleRes = titleRes, bodyRes = bodyRes)
+    fun toModel(documentId: String) = NotificationItem(
+        id = id.ifBlank { documentId },
+        titleRes = titleRes,
+        bodyRes = bodyRes,
+        title = title,
+        body = body,
+        timestamp = if (timestamp == 0L) System.currentTimeMillis() else timestamp,
+        type = type,
+        relatedId = relatedId
+    )
 }
 
 fun NotificationItem.toDto() = NotificationItemDto(
+    id = id,
     titleRes = titleRes,
-    bodyRes = bodyRes
+    bodyRes = bodyRes,
+    title = title,
+    body = body,
+    timestamp = timestamp,
+    type = type,
+    relatedId = relatedId
 )

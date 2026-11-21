@@ -47,6 +47,7 @@ fun HomeScreen(
     latestFoodNote: FoodNote?,
     onQuickAction: (QuickActionType) -> Unit,
     onSelectTab: (Screen) -> Unit,
+    onDeleteFoodNote: (Long) -> Unit = {},
     selectedTab: Screen
 ) {
     Column(
@@ -135,7 +136,10 @@ fun HomeScreen(
 
             Spacer(modifier = Modifier.height(18.dp))
 
-            LatestFoodNoteCard(note = latestFoodNote)
+            LatestFoodNoteCard(
+                note = latestFoodNote,
+                onDelete = latestFoodNote?.let { note -> { onDeleteFoodNote(note.id) } }
+            )
 
             Spacer(modifier = Modifier.height(16.dp))
         }

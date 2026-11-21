@@ -112,8 +112,14 @@ data class Appointment(
 
 /** A notification shown on the alerts screen. */
 data class NotificationItem(
-    @StringRes val titleRes: Int,
-    @StringRes val bodyRes: Int
+    val id: String = java.util.UUID.randomUUID().toString(),
+    @StringRes val titleRes: Int = 0,
+    @StringRes val bodyRes: Int = 0,
+    val title: String? = null,
+    val body: String? = null,
+    val timestamp: Long = System.currentTimeMillis(),
+    val type: String? = null,
+    val relatedId: String? = null
 )
 
 /** The patient details shown in the profile and personal records screens. */

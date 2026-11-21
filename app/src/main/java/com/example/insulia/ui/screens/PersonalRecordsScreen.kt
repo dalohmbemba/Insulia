@@ -14,6 +14,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -52,6 +53,10 @@ fun PersonalRecordsScreen(
     medications: List<Medication> = emptyList(),
     onBack: () -> Unit,
     onSelectTab: (Screen) -> Unit,
+    onAddMedication: () -> Unit = {},
+    onEditMedication: (Medication) -> Unit = {},
+    onDeleteMedication: (Medication) -> Unit = {},
+    onToggleMedication: (Medication) -> Unit = {},
     selectedTab: Screen
 ) {
     Column(
@@ -98,7 +103,9 @@ fun PersonalRecordsScreen(
             )
             InfoRecordCard(
                 label = stringResource(R.string.records_patient_id),
-                value = patient.patientId
+                value = patient.patientId.ifBlank {
+                    stringResource(R.string.profile_patient_id_pending)
+                }
             )
             InfoRecordCard(
                 label = stringResource(R.string.records_clinic),
@@ -142,11 +149,23 @@ fun PersonalRecordsScreen(
 
             Spacer(modifier = Modifier.height(18.dp))
 
-            Text(
-                text = stringResource(R.string.records_medication_tracking),
-                fontSize = 17.sp,
-                fontWeight = FontWeight.Bold
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = stringResource(R.string.records_medication_tracking),
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                TextButton(onClick = onAddMedication) {
+                    Text(
+                        text = stringResource(R.string.medication_add),
+                        fontSize = 12.sp
+                    )
+                }
+            }
 
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -165,8 +184,13 @@ fun PersonalRecordsScreen(
                     )
                 }
             } else {
-                medications.filter { it.isActive }.forEach { medication ->
-                    MedicationTrackingCard(medication = medication)
+                medications.forEach { medication ->
+                    MedicationTrackingCard(
+                        medication = medication,
+                        onEdit = { onEditMedication(medication) },
+                        onDelete = { onDeleteMedication(medication) },
+                        onToggle = { onToggleMedication(medication) }
+                    )
                 }
             }
 
@@ -186,14 +210,6 @@ fun PersonalRecordsScreen(
                 label = stringResource(R.string.records_appointments),
                 value = appointmentCount.toString()
             )
-
-            Spacer(modifier = Modifier.height(14.dp))
-
-            Text(
-                text = stringResource(R.string.records_disclaimer),
-                fontSize = 11.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
         }
 
         InsuliaBottomBar(
@@ -204,7 +220,12 @@ fun PersonalRecordsScreen(
 }
 
 @Composable
-private fun MedicationTrackingCard(medication: Medication) {
+private fun MedicationTrackingCard(
+    medication: Medication,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
+    onToggle: () -> Unit
+) {
     val now = System.currentTimeMillis()
     val daysLeft = TimeUnit.MILLISECONDS.toDays(medication.finishAt - now)
     val isOverdue = medication.isActive && medication.finishAt < now
@@ -257,11 +278,13 @@ private fun MedicationTrackingCard(medication: Medication) {
             Spacer(modifier = Modifier.height(8.dp))
 
             val statusText = when {
+                !medication.isActive -> stringResource(R.string.records_status_stopped)
                 isOverdue -> stringResource(R.string.records_status_overdue)
                 isDueSoon -> stringResource(R.string.records_status_due_soon, daysLeft)
                 else -> stringResource(R.string.records_status_on_track)
             }
             val statusColor = when {
+                !medication.isActive -> MaterialTheme.colorScheme.onSurfaceVariant
                 isOverdue -> MaterialTheme.colorScheme.error
                 isDueSoon -> MaterialTheme.colorScheme.primary
                 else -> MaterialTheme.colorScheme.onSurfaceVariant
@@ -285,6 +308,36 @@ private fun MedicationTrackingCard(medication: Medication) {
                     fontSize = 11.sp,
                     color = statusColor
                 )
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                TextButton(onClick = onEdit) {
+                    Text(
+                        text = stringResource(R.string.medication_edit),
+                        fontSize = 12.sp
+                    )
+                }
+                TextButton(onClick = onToggle) {
+                    Text(
+                        text = if (medication.isActive) {
+                            stringResource(R.string.medication_stop_short)
+                        } else {
+                            stringResource(R.string.medication_resume_short)
+                        },
+                        fontSize = 12.sp
+                    )
+                }
+                TextButton(onClick = onDelete) {
+                    Text(
+                        text = stringResource(R.string.medication_delete),
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
             }
         }
     }
