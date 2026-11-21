@@ -37,6 +37,7 @@ import com.example.insulia.ui.dialogs.LogReadingDialog
 import com.example.insulia.ui.dialogs.MedicationDialog
 import com.example.insulia.ui.screens.AlertsScreen
 import com.example.insulia.ui.screens.AppointmentsScreen
+import com.example.insulia.ui.screens.FoodNotesScreen
 import com.example.insulia.ui.screens.GlucoseLevelsScreen
 import com.example.insulia.ui.screens.HomeScreen
 import com.example.insulia.ui.screens.InstructionSectionScreen
@@ -44,7 +45,6 @@ import com.example.insulia.ui.screens.PersonalRecordsScreen
 import com.example.insulia.ui.screens.ProfileScreen
 import com.example.insulia.ui.screens.WelcomeScreen
 
-/** The dialogs the app can show on top of the current screen. */
 private sealed interface AppDialog {
     data object LogReading : AppDialog
     data object FoodNote : AppDialog
@@ -54,98 +54,58 @@ private sealed interface AppDialog {
     data class MedicationEditor(val medication: Medication, val isNew: Boolean) : AppDialog
 }
 
-/**
- * Root of the app.
- *
- * Navigation uses a back stack so that both the in-app back arrow and the
- * system back gesture return to the previous screen. Selecting a bottom
- * navigation tab replaces the stack instead of growing it, which stops the
- * stack from filling up with repeated screens.
- */
 @Composable
-fun InsuliaApp(
-    viewModel: InsuliaViewModel = viewModel()
-) {
+fun InsuliaApp(viewModel: InsuliaViewModel = viewModel()) {
     val backStack = remember { mutableStateListOf<Screen>(Screen.Welcome) }
     var dialog by remember { mutableStateOf<AppDialog?>(null) }
     var showBookingConfirmation by remember { mutableStateOf(false) }
     var currentTab by remember { mutableStateOf<Screen>(Screen.Home) }
     var editingAppointment by remember { mutableStateOf<Appointment?>(null) }
-
     val snackbarHostState = remember { SnackbarHostState() }
-
     val currentScreen = backStack.last()
 
-    // Every failed save or sync is surfaced instead of being swallowed.
     LaunchedEffect(viewModel.dataError) {
         val message = viewModel.dataError ?: return@LaunchedEffect
-        snackbarHostState.showSnackbar(
-            message = message,
-            withDismissAction = true,
-            duration = SnackbarDuration.Long
-        )
+        snackbarHostState.showSnackbar(message, withDismissAction = true, duration = SnackbarDuration.Long)
         viewModel.clearDataError()
     }
 
     LaunchedEffect(viewModel.dataMessage) {
         val message = viewModel.dataMessage ?: return@LaunchedEffect
-        snackbarHostState.showSnackbar(
-            message = message,
-            duration = SnackbarDuration.Short
-        )
+        snackbarHostState.showSnackbar(message, duration = SnackbarDuration.Short)
         viewModel.clearDataMessage()
     }
 
-    /**
-     * The tab that is highlighted in the bottom navigation.
-     *
-     * The profile sections always highlight the profile tab, everything else
-     * keeps the tab the patient came from.
-     */
     val selectedTab = when (currentScreen) {
-        Screen.Profile,
-        Screen.PersonalRecords,
-        Screen.GlucoseLevels,
-        Screen.Appointments -> Screen.Profile
-
+        Screen.Profile, Screen.PersonalRecords, Screen.GlucoseLevels,
+        Screen.Appointments, Screen.FoodNotes -> Screen.Profile
         else -> currentTab
     }
 
-    /** Opens a screen on top of the current one. */
     fun open(screen: Screen) {
-        if (backStack.last() != screen) {
-            backStack.add(screen)
-        }
+        if (backStack.last() != screen) backStack.add(screen)
     }
 
-    /** Returns to the previous screen. */
     fun goBack() {
-        if (backStack.size > 1) {
-            backStack.removeAt(backStack.lastIndex)
-        }
+        if (backStack.size > 1) backStack.removeAt(backStack.lastIndex)
     }
 
-    /** Shows a screen without keeping the previous one in the stack. */
     fun replaceRoot(screen: Screen) {
         backStack.clear()
         backStack.add(screen)
     }
 
-    /** Switches to a bottom navigation tab. */
     fun selectTab(tab: Screen) {
         currentTab = tab
-        while (backStack.size > 1) {
-            backStack.removeAt(backStack.lastIndex)
-        }
-        if (backStack.last() != tab) {
-            backStack.add(tab)
-        }
+        while (backStack.size > 1) backStack.removeAt(backStack.lastIndex)
+        if (backStack.last() != tab) backStack.add(tab)
     }
 
     fun handleQuickAction(action: QuickActionType) {
         when (action) {
             QuickActionType.LOG_READING -> dialog = AppDialog.LogReading
             QuickActionType.FOOD_NOTE -> dialog = AppDialog.FoodNote
+            QuickActionType.APPOINTMENTS -> open(Screen.Appointments)
             QuickActionType.LEARN -> open(Screen.Instructions)
         }
     }
@@ -155,39 +115,29 @@ fun InsuliaApp(
         dialog = AppDialog.Booking
     }
 
-    // The system back gesture follows the same stack as the in-app back arrow.
-    BackHandler(enabled = backStack.size > 1) {
-        goBack()
-    }
+    BackHandler(enabled = backStack.size > 1) { goBack() }
 
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+        modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
             .windowInsetsPadding(WindowInsets.systemBars)
     ) {
         when (currentScreen) {
-            Screen.Welcome -> WelcomeScreen(
-                onGetStarted = { replaceRoot(Screen.Home) }
-            )
+            Screen.Welcome -> WelcomeScreen(onGetStarted = { replaceRoot(Screen.Home) })
 
             Screen.Home -> HomeScreen(
                 patient = viewModel.patient,
                 latestReading = viewModel.latestReading,
                 recentReadings = viewModel.recentReadings,
                 latestFoodNote = viewModel.latestFoodNote,
+                foodNoteCount = viewModel.foodNotes.size,
                 onQuickAction = ::handleQuickAction,
                 onSelectTab = ::selectTab,
+                onOpenFoodNotes = { open(Screen.FoodNotes) },
                 onDeleteFoodNote = viewModel::deleteFoodNote,
                 selectedTab = selectedTab
             )
 
-            Screen.Alerts -> AlertsScreen(
-                notifications = viewModel.notifications,
-                onBack = ::goBack,
-                onSelectTab = ::selectTab,
-                selectedTab = selectedTab
-            )
+            Screen.Alerts -> AlertsScreen(viewModel.notifications, ::goBack, ::selectTab, selectedTab)
 
             Screen.Profile -> ProfileScreen(
                 patient = viewModel.patient,
@@ -210,38 +160,28 @@ fun InsuliaApp(
                 medications = viewModel.medications,
                 onBack = ::goBack,
                 onSelectTab = ::selectTab,
-                onAddMedication = {
-                    dialog = AppDialog.MedicationEditor(
-                        medication = viewModel.newMedication(),
-                        isNew = true
-                    )
-                },
-                onEditMedication = { medication ->
-                    dialog = AppDialog.MedicationEditor(medication = medication, isNew = false)
-                },
-                onDeleteMedication = { medication ->
-                    viewModel.deleteMedication(medication.id)
-                },
-                onToggleMedication = { medication ->
-                    viewModel.setMedicationActive(medication.id, !medication.isActive)
-                },
+                onAddMedication = { dialog = AppDialog.MedicationEditor(viewModel.newMedication(), true) },
+                onEditMedication = { dialog = AppDialog.MedicationEditor(it, false) },
+                onDeleteMedication = { viewModel.deleteMedication(it.id) },
+                onToggleMedication = { viewModel.setMedicationActive(it.id, !it.isActive) },
                 selectedTab = selectedTab
             )
 
             Screen.GlucoseLevels -> GlucoseLevelsScreen(
-                readings = viewModel.readings,
-                averageReading = viewModel.averageReading,
+                viewModel.readings, viewModel.averageReading, ::goBack, ::selectTab,
+                viewModel::deleteReading, selectedTab
+            )
+
+            Screen.FoodNotes -> FoodNotesScreen(
+                notes = viewModel.foodNotes,
                 onBack = ::goBack,
                 onSelectTab = ::selectTab,
-                onDeleteReading = viewModel::deleteReading,
+                onAdd = { dialog = AppDialog.FoodNote },
+                onDelete = viewModel::deleteFoodNote,
                 selectedTab = selectedTab
             )
 
-            Screen.Instructions -> InstructionSectionScreen(
-                onBack = ::goBack,
-                onSelectTab = ::selectTab,
-                selectedTab = selectedTab
-            )
+            Screen.Instructions -> InstructionSectionScreen(::goBack, ::selectTab, selectedTab)
 
             Screen.Appointments -> AppointmentsScreen(
                 upcoming = viewModel.upcomingAppointment,
@@ -250,100 +190,44 @@ fun InsuliaApp(
                 onBack = ::goBack,
                 onSelectTab = ::selectTab,
                 onBookAppointment = { startBooking() },
-                onReschedule = { appointment -> startBooking(appointment) },
-                onDeleteAppointment = { appointment ->
-                    viewModel.deleteAppointment(appointment.id)
-                },
+                onReschedule = ::startBooking,
+                onDeleteAppointment = { viewModel.deleteAppointment(it.id) },
                 selectedTab = selectedTab
             )
         }
 
         when (val shownDialog = dialog) {
-            AppDialog.LogReading -> LogReadingDialog(
-                onDismiss = { dialog = null },
-                onSave = { value, context: ReadingContext ->
-                    viewModel.addReading(value, context)
-                    dialog = null
-                }
-            )
-
-            AppDialog.FoodNote -> FoodNoteDialog(
-                onDismiss = { dialog = null },
-                onSave = { meal, note ->
-                    viewModel.addFoodNote(meal, note)
-                    dialog = null
-                }
-            )
-
+            AppDialog.LogReading -> LogReadingDialog({ dialog = null }) { value, context ->
+                viewModel.addReading(value, context); dialog = null
+            }
+            AppDialog.FoodNote -> FoodNoteDialog({ dialog = null }) { meal, note ->
+                viewModel.addFoodNote(meal, note); dialog = null
+            }
             AppDialog.Booking -> BookingDialog(
                 initial = editingAppointment,
-                onDismiss = {
-                    editingAppointment = null
-                    dialog = null
-                },
-                onBook = { patientName, clinicName, dateMillis, lastVisit, isEmergency ->
-                    val editing = editingAppointment
-                    if (editing == null) {
-                        viewModel.bookAppointment(
-                            patientName = patientName,
-                            clinicName = clinicName,
-                            dateMillis = dateMillis,
-                            lastVisit = lastVisit,
-                            isEmergency = isEmergency
-                        )
-                    } else {
-                        viewModel.rescheduleAppointment(
-                            id = editing.id,
-                            patientName = patientName,
-                            clinicName = clinicName,
-                            dateMillis = dateMillis,
-                            lastVisit = lastVisit,
-                            isEmergency = isEmergency
-                        )
-                    }
-                    showBookingConfirmation = true
-                    editingAppointment = null
-                    dialog = null
-                }
-            )
-
+                onDismiss = { editingAppointment = null; dialog = null }
+            ) { patientName, clinicName, dateMillis, lastVisit, isEmergency ->
+                val editing = editingAppointment
+                if (editing == null) viewModel.bookAppointment(patientName, clinicName, dateMillis, lastVisit, isEmergency)
+                else viewModel.rescheduleAppointment(editing.id, patientName, clinicName, dateMillis, lastVisit, isEmergency)
+                showBookingConfirmation = true
+                editingAppointment = null
+                dialog = null
+            }
             AppDialog.Account -> AccountDialog(
-                isAnonymous = viewModel.isAnonymousAccount,
-                accountEmail = viewModel.accountEmail,
-                busy = viewModel.authBusy,
-                onDismiss = { dialog = null },
-                onCreateAccount = viewModel::linkAccount,
-                onSignIn = viewModel::signInToAccount,
-                onResetPassword = viewModel::sendPasswordReset
+                viewModel.isAnonymousAccount, viewModel.accountEmail, viewModel.authBusy,
+                { dialog = null }, viewModel::linkAccount, viewModel::signInToAccount,
+                viewModel::sendPasswordReset
             )
-
-            AppDialog.EditProfile -> EditProfileDialog(
-                patient = viewModel.patient,
-                onDismiss = { dialog = null },
-                onSave = { updated ->
-                    viewModel.updateProfile(updated)
-                    dialog = null
-                }
-            )
-
+            AppDialog.EditProfile -> EditProfileDialog(viewModel.patient, { dialog = null }) {
+                viewModel.updateProfile(it); dialog = null
+            }
             is AppDialog.MedicationEditor -> MedicationDialog(
-                initial = shownDialog.medication,
-                isNew = shownDialog.isNew,
-                onDismiss = { dialog = null },
-                onSave = { medication ->
-                    viewModel.addOrUpdateMedication(medication)
-                    dialog = null
-                }
-            )
-
+                shownDialog.medication, shownDialog.isNew, { dialog = null }
+            ) { viewModel.addOrUpdateMedication(it); dialog = null }
             null -> Unit
         }
 
-        SnackbarHost(
-            hostState = snackbarHostState,
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(16.dp)
-        )
+        SnackbarHost(snackbarHostState, Modifier.align(Alignment.BottomCenter).padding(16.dp))
     }
 }

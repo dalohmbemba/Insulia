@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.MenuBook
 import androidx.compose.material.icons.automirrored.outlined.ShowChart
+import androidx.compose.material.icons.outlined.Event
 import androidx.compose.material.icons.outlined.Restaurant
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -16,15 +17,11 @@ import com.example.insulia.R
 enum class QuickActionType {
     LOG_READING,
     FOOD_NOTE,
+    APPOINTMENTS,
     LEARN
 }
 
-/**
- * The row of quick actions.
- *
- * Every action now does something: readings and food notes are recorded in
- * the shared state, and "Learn" opens the instruction section.
- */
+/** The row of quick actions. */
 @Composable
 fun QuickActionsRow(
     onAction: (QuickActionType) -> Unit
@@ -43,6 +40,12 @@ fun QuickActionsRow(
             title = stringResource(R.string.quick_food_note),
             icon = Icons.Outlined.Restaurant,
             onClick = { onAction(QuickActionType.FOOD_NOTE) }
+        )
+
+        QuickAction(
+            title = stringResource(R.string.quick_appointments),
+            icon = Icons.Outlined.Event,
+            onClick = { onAction(QuickActionType.APPOINTMENTS) }
         )
 
         QuickAction(
