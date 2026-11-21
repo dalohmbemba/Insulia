@@ -31,6 +31,7 @@ import com.example.insulia.ui.components.InsuliaCard
 import com.example.insulia.ui.components.LatestFoodNoteCard
 import com.example.insulia.ui.components.QuickActionType
 import com.example.insulia.ui.components.QuickActionsRow
+import com.example.insulia.ui.components.SectionHeading
 import com.example.insulia.ui.components.glucoseStatusColor
 
 @Composable
@@ -61,30 +62,38 @@ fun HomeScreen(
                 .padding(horizontal = 20.dp)
         ) {
             Spacer(modifier = Modifier.height(8.dp))
-            Text(text = stringResource(R.string.home_latest_glucose), fontSize = 16.sp,
-                fontWeight = FontWeight.Bold)
+            SectionHeading(
+                text = stringResource(R.string.home_latest_glucose),
+                color = MaterialTheme.colorScheme.primary
+            )
             Spacer(modifier = Modifier.height(8.dp))
             LatestGlucoseCard(reading = latestReading)
 
-            Spacer(modifier = Modifier.height(18.dp))
-            Text(text = stringResource(R.string.home_quick_actions), fontSize = 18.sp,
-                fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(16.dp))
+            SectionHeading(
+                text = stringResource(R.string.home_quick_actions),
+                color = MaterialTheme.colorScheme.primary
+            )
             Spacer(modifier = Modifier.height(8.dp))
             QuickActionsRow(onAction = onQuickAction)
 
-            Spacer(modifier = Modifier.height(20.dp))
-            Text(text = stringResource(R.string.home_glucose_trend), fontSize = 18.sp,
-                fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+            Spacer(modifier = Modifier.height(16.dp))
+            SectionHeading(
+                text = stringResource(R.string.home_glucose_trend),
+                color = MaterialTheme.colorScheme.primary
+            )
             Spacer(modifier = Modifier.height(8.dp))
             GlucoseTrendCard(readings = recentReadings)
 
-            Spacer(modifier = Modifier.height(18.dp))
-            Text(text = stringResource(R.string.home_diet_suggestion), fontSize = 18.sp,
-                fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+            Spacer(modifier = Modifier.height(16.dp))
+            SectionHeading(
+                text = stringResource(R.string.home_diet_suggestion),
+                color = MaterialTheme.colorScheme.primary
+            )
             Spacer(modifier = Modifier.height(8.dp))
             DietScheduleCard()
 
-            Spacer(modifier = Modifier.height(18.dp))
+            Spacer(modifier = Modifier.height(16.dp))
             LatestFoodNoteCard(
                 note = latestFoodNote,
                 count = foodNoteCount,

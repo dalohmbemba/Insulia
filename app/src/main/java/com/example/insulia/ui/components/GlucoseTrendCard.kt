@@ -51,7 +51,7 @@ fun GlucoseTrendCard(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(12.dp)
+                .padding(16.dp)
         ) {
             Text(
                 text = stringResource(R.string.glucose_trend_title, readings.size),

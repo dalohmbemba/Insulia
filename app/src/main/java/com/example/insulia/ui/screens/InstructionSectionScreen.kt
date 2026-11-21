@@ -14,13 +14,13 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.insulia.R
 import com.example.insulia.navigation.Screen
 import com.example.insulia.ui.components.InstructionCard
 import com.example.insulia.ui.components.InsuliaBottomBar
+import com.example.insulia.ui.components.FootnoteText
 import com.example.insulia.ui.components.PageHeader
 
 /** Guidance for patients and caregivers. */
@@ -88,11 +88,7 @@ fun InstructionSectionScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            Text(
-                text = stringResource(R.string.instructions_disclaimer),
-                fontSize = 11.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            FootnoteText(text = stringResource(R.string.instructions_disclaimer))
         }
 
         InsuliaBottomBar(

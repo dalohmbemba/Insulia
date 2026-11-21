@@ -10,10 +10,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -31,6 +35,7 @@ import com.example.insulia.navigation.Screen
 import com.example.insulia.ui.components.InsuliaBottomBar
 import com.example.insulia.ui.components.InsuliaCard
 import com.example.insulia.ui.components.PageHeader
+import com.example.insulia.ui.components.SectionHeading
 
 @Composable
 fun FoodNotesScreen(
@@ -53,13 +58,13 @@ fun FoodNotesScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
+                SectionHeading(
                     text = stringResource(R.string.food_notes_count, notes.size),
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
                 )
-                Button(onClick = onAdd, shape = RoundedCornerShape(7.dp)) {
+                Button(onClick = onAdd, shape = RoundedCornerShape(14.dp), modifier = Modifier.height(48.dp)) {
+                    Icon(Icons.Outlined.Add, contentDescription = null)
+                    Spacer(modifier = Modifier.width(6.dp))
                     Text(stringResource(R.string.food_note_add))
                 }
             }
@@ -79,7 +84,7 @@ fun FoodNotesScreen(
                     InsuliaCard(
                         modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp)
                     ) {
-                        Column(modifier = Modifier.padding(14.dp)) {
+                        Column(modifier = Modifier.padding(16.dp)) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,

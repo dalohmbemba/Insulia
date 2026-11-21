@@ -829,14 +829,33 @@ class InsuliaViewModel(
      */
     private fun regenerateNotifications(enqueueWork: Boolean = true) {
         try {
+            val readStates = notifications.associate { it.id to it.isRead }
             notifications = NotificationReconciler.build(
                 readings = readings,
                 medications = medications,
                 appointments = appointments
-            )
+            ).map { item -> item.copy(isRead = readStates[item.id] ?: item.isRead) }
             if (enqueueWork) enqueueNotificationReconcile()
         } catch (t: Throwable) {
             reportError("Could not update notifications", t)
+        }
+    }
+
+    fun markNotificationRead(id: String) {
+        val previous = notifications.firstOrNull { it.id == id } ?: return
+        if (previous.isRead) return
+        val updated = previous.copy(isRead = true)
+        notifications = notifications.map { if (it.id == id) updated else it }
+
+        viewModelScope.launch {
+            try {
+                repository.saveNotifications(listOf(updated))
+            } catch (t: Throwable) {
+                notifications = notifications.map {
+                    if (it.id == id && it.isRead == updated.isRead) previous else it
+                }
+                reportError("Could not update notification status", t)
+            }
         }
     }
 

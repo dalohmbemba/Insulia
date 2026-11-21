@@ -24,7 +24,7 @@ import com.example.insulia.data.FoodNote
 @Composable
 fun DietScheduleCard(modifier: Modifier = Modifier) {
     InsuliaCard(modifier = modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(12.dp)) {
+        Column(modifier = Modifier.padding(16.dp)) {
             Text(text = stringResource(R.string.diet_timetable_title), fontSize = 14.sp,
                 fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
             Spacer(modifier = Modifier.height(8.dp))
@@ -34,8 +34,7 @@ fun DietScheduleCard(modifier: Modifier = Modifier) {
             MealRow(stringResource(R.string.diet_snack_pm_time), stringResource(R.string.meal_snack), stringResource(R.string.diet_snack_pm_food))
             MealRow(stringResource(R.string.diet_dinner_time), stringResource(R.string.meal_dinner), stringResource(R.string.diet_dinner_food))
             Spacer(modifier = Modifier.height(4.dp))
-            Text(text = stringResource(R.string.diet_timetable_note), fontSize = 10.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
+            FootnoteText(text = stringResource(R.string.diet_timetable_note))
         }
     }
 }
@@ -49,7 +48,7 @@ fun LatestFoodNoteCard(
     onDelete: (() -> Unit)? = null
 ) {
     InsuliaCard(modifier = modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(12.dp)) {
+        Column(modifier = Modifier.padding(16.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically) {
                 Text(text = stringResource(R.string.home_latest_food_note), fontSize = 14.sp,

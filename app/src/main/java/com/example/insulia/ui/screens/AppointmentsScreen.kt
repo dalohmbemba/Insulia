@@ -9,12 +9,18 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.DeleteOutline
+import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.Event
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -33,6 +39,7 @@ import com.example.insulia.navigation.Screen
 import com.example.insulia.ui.components.InsuliaBottomBar
 import com.example.insulia.ui.components.InsuliaCard
 import com.example.insulia.ui.components.PageHeader
+import com.example.insulia.ui.components.SectionHeading
 
 /**
  * Upcoming and previous clinic appointments.
@@ -65,23 +72,23 @@ fun AppointmentsScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp, vertical = 12.dp)
         ) {
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(8.dp))
+
+            SectionHeading(
+                text = stringResource(R.string.appointments_upcoming),
+                color = MaterialTheme.colorScheme.primary
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
 
             InsuliaCard(modifier = Modifier.fillMaxWidth()) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
+                    horizontalArrangement = Arrangement.End,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = stringResource(R.string.appointments_upcoming),
-                        fontSize = 14.sp,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Medium
-                    )
-
                     Text(
                         text = if (upcoming == null) {
                             stringResource(R.string.appointments_none_upcoming)
@@ -108,12 +115,21 @@ fun AppointmentsScreen(
                         horizontalArrangement = Arrangement.End
                     ) {
                         TextButton(onClick = { onReschedule(upcoming) }) {
+                            Icon(Icons.Outlined.Edit, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
                             Text(
                                 text = stringResource(R.string.appointments_reschedule),
                                 fontSize = 12.sp
                             )
                         }
                         TextButton(onClick = { onDeleteAppointment(upcoming) }) {
+                            Icon(
+                                Icons.Outlined.DeleteOutline,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
                             Text(
                                 text = stringResource(R.string.appointments_cancel),
                                 fontSize = 12.sp,
@@ -146,28 +162,27 @@ fun AppointmentsScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             InsuliaCard(
                 modifier = Modifier.fillMaxWidth(),
                 containerColor = MaterialTheme.colorScheme.surface,
                 borderColor = MaterialTheme.colorScheme.outline
             ) {
-                Column(modifier = Modifier.padding(10.dp)) {
-                    Text(
+                Column(modifier = Modifier.padding(16.dp)) {
+                    SectionHeading(
                         text = stringResource(R.string.appointments_previous_title, previous.size),
-                        color = MaterialTheme.colorScheme.primary,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(6.dp)
+                        color = MaterialTheme.colorScheme.primary
                     )
+
+                    Spacer(modifier = Modifier.height(10.dp))
 
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .background(
                                 MaterialTheme.colorScheme.surfaceVariant,
-                                RoundedCornerShape(6.dp)
+                                RoundedCornerShape(10.dp)
                             )
                             .padding(8.dp),
                         horizontalArrangement = Arrangement.SpaceBetween
@@ -238,6 +253,13 @@ fun AppointmentsScreen(
                             horizontalArrangement = Arrangement.End
                         ) {
                             TextButton(onClick = { onDeleteAppointment(appointment) }) {
+                                Icon(
+                                    Icons.Outlined.DeleteOutline,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
                                 Text(
                                     text = stringResource(R.string.appointments_delete),
                                     fontSize = 11.sp,
@@ -249,31 +271,34 @@ fun AppointmentsScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(40.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    text = stringResource(R.string.appointments_missed),
-                    color = MaterialTheme.colorScheme.primary,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold
-                )
-
-                Button(
-                    onClick = onBookAppointment,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary
-                    ),
-                    shape = RoundedCornerShape(7.dp)
-                ) {
-                    Text(text = stringResource(R.string.appointments_book_now))
+            InsuliaCard(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = stringResource(R.string.appointments_missed),
+                        color = MaterialTheme.colorScheme.primary,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Button(
+                        onClick = onBookAppointment,
+                        modifier = Modifier.fillMaxWidth().height(50.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        ),
+                        shape = RoundedCornerShape(14.dp)
+                    ) {
+                        Icon(Icons.Outlined.Event, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(text = stringResource(R.string.appointments_book_now))
+                    }
                 }
             }
+
+            Spacer(modifier = Modifier.height(16.dp))
         }
 
         InsuliaBottomBar(

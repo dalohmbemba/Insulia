@@ -402,8 +402,14 @@ class FirestoreDataSource(
             document.toObject<AppointmentDto>()?.toModel(document.id)
         }
 
-        val desired = NotificationReconciler.build(readings, medications, appointments)
         val existing = notificationsRef.get().await().documents
+        val readStates = existing.associate { document ->
+            document.id to (document.toObject<NotificationItemDto>()?.isRead ?: false)
+        }
+        val desired = NotificationReconciler.build(readings, medications, appointments)
+            .map { notification ->
+                notification.copy(isRead = readStates[notification.id] ?: false)
+            }
         val desiredIds = desired.map { it.id }.toSet()
         if (desired.isEmpty() && existing.isEmpty()) return
 
@@ -594,9 +600,10 @@ data class NotificationItemDto(
     @get:PropertyName("body") @set:PropertyName("body") var body: String? = null,
     @get:PropertyName("timestamp") @set:PropertyName("timestamp") var timestamp: Long = 0,
     @get:PropertyName("type") @set:PropertyName("type") var type: String? = null,
-    @get:PropertyName("relatedId") @set:PropertyName("relatedId") var relatedId: String? = null
+    @get:PropertyName("relatedId") @set:PropertyName("relatedId") var relatedId: String? = null,
+    @get:PropertyName("isRead") @set:PropertyName("isRead") var isRead: Boolean = false
 ) {
-    constructor() : this("", 0, 0, null, null, 0, null, null)
+    constructor() : this("", 0, 0, null, null, 0, null, null, false)
 
     fun toModel(documentId: String) = NotificationItem(
         id = id.ifBlank { documentId },
@@ -606,7 +613,8 @@ data class NotificationItemDto(
         body = body,
         timestamp = if (timestamp == 0L) System.currentTimeMillis() else timestamp,
         type = type,
-        relatedId = relatedId
+        relatedId = relatedId,
+        isRead = isRead
     )
 }
 
@@ -618,5 +626,6 @@ fun NotificationItem.toDto() = NotificationItemDto(
     body = body,
     timestamp = timestamp,
     type = type,
-    relatedId = relatedId
+    relatedId = relatedId,
+    isRead = isRead
 )

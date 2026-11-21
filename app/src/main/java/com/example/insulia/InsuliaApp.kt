@@ -151,11 +151,16 @@ fun InsuliaApp(viewModel: InsuliaViewModel = viewModel()) {
                 selectedTab = selectedTab
             )
 
-            Screen.Alerts -> AlertsScreen(viewModel.notifications, ::goBack, ::selectTab, selectedTab)
+            Screen.Alerts -> AlertsScreen(
+                notifications = viewModel.notifications,
+                onBack = ::goBack,
+                onSelectTab = ::selectTab,
+                onMarkRead = viewModel::markNotificationRead,
+                selectedTab = selectedTab
+            )
 
             Screen.Profile -> ProfileScreen(
                 patient = viewModel.patient,
-                accountEmail = viewModel.accountEmail,
                 onBack = ::goBack,
                 onSelectTab = ::selectTab,
                 onOpen = ::open,

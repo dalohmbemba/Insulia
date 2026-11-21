@@ -58,6 +58,15 @@
     <string name="dialog_delete">Delete</string>
     <string name="page_notifications">Notifications</string>
     <string name="notifications_time_label">Today</string>
+    <string name="notifications_unread_group">Unread (%1$d)</string>
+    <string name="notifications_read_group">Read (%1$d)</string>
+    <string name="notifications_unread_empty">You’re all caught up.</string>
+    <string name="notifications_read_empty">No notifications have been read yet.</string>
+    <string name="notifications_mark_read">Mark as read</string>
+    <string name="notification_type_glucose">Glucose level</string>
+    <string name="notification_type_medication">Medication</string>
+    <string name="notification_type_appointment">Appointment</string>
+    <string name="notification_type_other">General</string>
     <string name="notification_glucose_title">Glucose reminder</string>
     <string name="notification_glucose_body">Remember to check and record your glucose level.</string>
     <string name="notification_medication_title">Medication reminder</string>
@@ -209,7 +218,7 @@
     <string name="auth_no_account">New to Insulia?</string>
     <string name="auth_have_account">Already registered?</string>
     <string name="account_reset">Forgot password</string>
-    <string name="profile_edit">Edit profile</string>
+    <string name="profile_edit">Edit personal information</string>
     <string name="profile_name_placeholder">Your profile</string>
     <string name="profile_edit_title">Edit profile</string>
     <string name="profile_full_name">Full name</string>

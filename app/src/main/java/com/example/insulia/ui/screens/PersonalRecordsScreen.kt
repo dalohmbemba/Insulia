@@ -9,9 +9,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -34,6 +38,7 @@ import com.example.insulia.ui.components.InfoRecordCard
 import com.example.insulia.ui.components.InsuliaBottomBar
 import com.example.insulia.ui.components.InsuliaCard
 import com.example.insulia.ui.components.PageHeader
+import com.example.insulia.ui.components.SectionHeading
 import com.example.insulia.ui.components.glucoseStatusColor
 import java.util.concurrent.TimeUnit
 
@@ -85,11 +90,7 @@ fun PersonalRecordsScreen(
 
             Spacer(modifier = Modifier.height(18.dp))
 
-            Text(
-                text = stringResource(R.string.records_personal_information),
-                fontSize = 17.sp,
-                fontWeight = FontWeight.Bold
-            )
+            SectionHeading(text = stringResource(R.string.records_personal_information))
 
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -114,11 +115,7 @@ fun PersonalRecordsScreen(
 
             Spacer(modifier = Modifier.height(18.dp))
 
-            Text(
-                text = stringResource(R.string.records_diabetes_records),
-                fontSize = 17.sp,
-                fontWeight = FontWeight.Bold
-            )
+            SectionHeading(text = stringResource(R.string.records_diabetes_records))
 
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -160,6 +157,8 @@ fun PersonalRecordsScreen(
                     fontWeight = FontWeight.Bold
                 )
                 TextButton(onClick = onAddMedication) {
+                    Icon(Icons.Outlined.Add, contentDescription = null)
+                    Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         text = stringResource(R.string.medication_add),
                         fontSize = 12.sp
@@ -174,7 +173,7 @@ fun PersonalRecordsScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = 8.dp),
-                    shape = RoundedCornerShape(10.dp)
+                    shape = RoundedCornerShape(14.dp)
                 ) {
                     Text(
                         text = stringResource(R.string.records_no_medications),
@@ -235,9 +234,9 @@ private fun MedicationTrackingCard(
         modifier = Modifier
             .fillMaxWidth()
             .padding(bottom = 10.dp),
-        shape = RoundedCornerShape(10.dp)
+        shape = RoundedCornerShape(14.dp)
     ) {
-        Column(modifier = Modifier.padding(14.dp)) {
+        Column(modifier = Modifier.padding(16.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
