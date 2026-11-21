@@ -25,6 +25,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.annotation.StringRes
 import com.example.insulia.R
 import com.example.insulia.data.Appointment
 import com.example.insulia.data.DateFormats
@@ -94,7 +95,7 @@ fun AppointmentsScreen(
 
                 if (upcoming != null) {
                     Text(
-                        text = "${upcoming.clinicName} · ${stringResource(upcoming.commentRes)}",
+                        text = "${upcoming.clinicName} · ${stringResource(safeAppointmentComment(upcoming.commentRes))}",
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(start = 16.dp, end = 16.dp)
@@ -225,7 +226,7 @@ fun AppointmentsScreen(
                             )
 
                             Text(
-                                text = stringResource(appointment.commentRes),
+                                text = stringResource(safeAppointmentComment(appointment.commentRes)),
                                 fontSize = 11.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.width(96.dp)
@@ -280,4 +281,12 @@ fun AppointmentsScreen(
             onSelect = onSelectTab
         )
     }
+}
+
+@StringRes
+private fun safeAppointmentComment(@StringRes resourceId: Int): Int = when (resourceId) {
+    R.string.appointments_emergency_comment,
+    R.string.appointments_normal_comment,
+    R.string.appointments_previous_visit_comment -> resourceId
+    else -> R.string.appointments_previous_visit_comment
 }
