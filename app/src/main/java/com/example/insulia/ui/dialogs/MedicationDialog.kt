@@ -8,7 +8,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.outlined.DateRange
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
@@ -112,7 +112,7 @@ fun MedicationDialog(
                     trailingIcon = {
                         IconButton(onClick = { pickingStart = true }) {
                             Icon(
-                                imageVector = Icons.Default.DateRange,
+                                imageVector = Icons.Outlined.DateRange,
                                 contentDescription = stringResource(R.string.booking_pick_date),
                                 tint = MaterialTheme.colorScheme.primary
                             )
@@ -131,7 +131,7 @@ fun MedicationDialog(
                     trailingIcon = {
                         IconButton(onClick = { pickingFinish = true }) {
                             Icon(
-                                imageVector = Icons.Default.DateRange,
+                                imageVector = Icons.Outlined.DateRange,
                                 contentDescription = stringResource(R.string.booking_pick_date),
                                 tint = MaterialTheme.colorScheme.primary
                             )
