@@ -15,7 +15,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -174,13 +174,14 @@ fun ProfileDestination(
 /** A single quick action button. */
 @Composable
 fun QuickAction(
+    modifier: Modifier = Modifier,
     title: String,
     icon: ImageVector,
     onClick: () -> Unit
 ) {
     InsuliaCard(
         modifier = Modifier
-            .width(100.dp)
+            .then(modifier)
             .height(70.dp),
         shape = RoundedCornerShape(10.dp),
         onClick = onClick

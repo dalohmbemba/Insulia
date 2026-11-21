@@ -11,6 +11,7 @@ import androidx.compose.material.icons.outlined.Restaurant
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import com.example.insulia.R
 
 /** The quick actions offered on the home and profile screens. */
@@ -28,30 +29,31 @@ fun QuickActionsRow(
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        QuickAction(
-            title = stringResource(R.string.quick_log_reading),
-            icon = Icons.AutoMirrored.Outlined.ShowChart,
-            onClick = { onAction(QuickActionType.LOG_READING) }
-        )
-
-        QuickAction(
-            title = stringResource(R.string.quick_food_note),
-            icon = Icons.Outlined.Restaurant,
-            onClick = { onAction(QuickActionType.FOOD_NOTE) }
-        )
-
-        QuickAction(
-            title = stringResource(R.string.quick_appointments),
-            icon = Icons.Outlined.Event,
-            onClick = { onAction(QuickActionType.APPOINTMENTS) }
-        )
-
-        QuickAction(
-            title = stringResource(R.string.quick_learn),
-            icon = Icons.AutoMirrored.Outlined.MenuBook,
-            onClick = { onAction(QuickActionType.LEARN) }
-        )
+            QuickAction(
+                modifier = Modifier.weight(1f),
+                title = stringResource(R.string.quick_log_reading),
+                icon = Icons.AutoMirrored.Outlined.ShowChart,
+                onClick = { onAction(QuickActionType.LOG_READING) }
+            )
+            QuickAction(
+                modifier = Modifier.weight(1f),
+                title = stringResource(R.string.quick_food_note),
+                icon = Icons.Outlined.Restaurant,
+                onClick = { onAction(QuickActionType.FOOD_NOTE) }
+            )
+            QuickAction(
+                modifier = Modifier.weight(1f),
+                title = stringResource(R.string.quick_appointments),
+                icon = Icons.Outlined.Event,
+                onClick = { onAction(QuickActionType.APPOINTMENTS) }
+            )
+            QuickAction(
+                modifier = Modifier.weight(1f),
+                title = stringResource(R.string.quick_learn),
+                icon = Icons.AutoMirrored.Outlined.MenuBook,
+                onClick = { onAction(QuickActionType.LEARN) }
+            )
     }
 }
