@@ -3,6 +3,7 @@ package com.example.insulia
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import org.junit.Rule
 import org.junit.Test
 
@@ -38,5 +39,12 @@ class InsuliaNavigationTest {
         composeTestRule.openProfile()
         composeTestRule.goBack()
         composeTestRule.onNodeWithText(ScreenText.HOME).assertIsDisplayed()
+    }
+
+    @Test
+    fun appointmentsQuickAction_opensAppointments() {
+        composeTestRule.openHome()
+        composeTestRule.onNodeWithText("Appointments").performClick()
+        composeTestRule.onNodeWithText(ScreenText.APPOINTMENTS).assertIsDisplayed()
     }
 }

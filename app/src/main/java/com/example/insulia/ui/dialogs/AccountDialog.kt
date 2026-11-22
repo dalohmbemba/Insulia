@@ -8,6 +8,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -27,7 +28,7 @@ import androidx.compose.ui.unit.sp
 import com.example.insulia.R
 
 /**
- * Lets a patient attach an email and password to the anonymous account.
+ * Lets a patient create an account or sign in with email and password.
  *
  * Account linking keeps the existing UID, so every record already stored under
  * `users/{uid}` stays attached. The same credentials can also be used on a new
@@ -45,6 +46,7 @@ fun AccountDialog(
 ) {
     var email by remember { mutableStateOf(accountEmail.orEmpty()) }
     var password by remember { mutableStateOf("") }
+    var confirmingAccountSwitch by remember { mutableStateOf(false) }
 
     val canSubmit = email.isNotBlank() && password.length >= 6 && !busy
 
@@ -129,8 +131,11 @@ fun AccountDialog(
                     Text(stringResource(R.string.account_create))
                 }
             } else {
-                TextButton(onClick = onDismiss) {
-                    Text(stringResource(R.string.dialog_ok))
+                TextButton(
+                    onClick = { onSignIn(email.trim(), password) },
+                    enabled = canSubmit
+                ) {
+                Text(stringResource(R.string.account_sign_in))
                 }
             }
         },
@@ -152,6 +157,36 @@ fun AccountDialog(
             }
         }
     )
+
+    if (confirmingAccountSwitch) {
+        AlertDialog(
+            onDismissRequest = { confirmingAccountSwitch = false },
+            title = { Text("Switch account?") },
+            text = {
+                Text(
+                    if (isAnonymous) {
+                        "Your current anonymous account's records will not merge with the account you sign in to. Unless you link this anonymous account to an email first, you may not be able to access its records again after switching."
+                    } else {
+                        "Records in your current account will stay with that account and will not automatically merge with the account you sign in to. Make sure you can sign back in to the current account before switching."
+                    }
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        confirmingAccountSwitch = false
+                        onSignIn(email.trim(), password)
+                    },
+                    enabled = canSubmit
+                ) { Text("Continue") }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmingAccountSwitch = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
 }
 
 /** Test tags for the account dialog fields. */

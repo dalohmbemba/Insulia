@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
@@ -38,6 +39,7 @@ import com.example.insulia.ui.screens.AlertsScreen
 import com.example.insulia.ui.screens.AuthScreen
 import com.example.insulia.ui.screens.AppointmentsScreen
 import com.example.insulia.ui.screens.FoodNotesScreen
+import com.example.insulia.ui.screens.DiabetesResourceScreen
 import com.example.insulia.ui.screens.GlucoseLevelsScreen
 import com.example.insulia.ui.screens.HomeScreen
 import com.example.insulia.ui.screens.InstructionSectionScreen
@@ -62,6 +64,7 @@ fun InsuliaApp(viewModel: InsuliaViewModel = viewModel()) {
     var showAuthScreen by remember { mutableStateOf(false) }
     var showBookingConfirmation by remember { mutableStateOf(false) }
     var currentTab by remember { mutableStateOf<Screen>(Screen.Home) }
+    val instructionScrollState = rememberScrollState()
     var editingAppointment by remember { mutableStateOf<Appointment?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
     val currentScreen = backStack.last()
@@ -202,7 +205,22 @@ fun InsuliaApp(viewModel: InsuliaViewModel = viewModel()) {
                 selectedTab = selectedTab
             )
 
-            Screen.Instructions -> InstructionSectionScreen(::goBack, ::selectTab, selectedTab)
+            Screen.Instructions -> InstructionSectionScreen(
+                onBack = ::goBack,
+                onSelectTab = ::selectTab,
+                selectedTab = selectedTab,
+                diabetesType = viewModel.patient.diabetesType,
+                scrollState = instructionScrollState,
+                onOpenResource = { title, url -> open(Screen.DiabetesResource(title, url)) }
+            )
+
+            is Screen.DiabetesResource -> DiabetesResourceScreen(
+                title = currentScreen.title,
+                url = currentScreen.url,
+                onBack = ::goBack,
+                onSelectTab = ::selectTab,
+                selectedTab = selectedTab
+            )
 
             Screen.Appointments -> AppointmentsScreen(
                 upcoming = viewModel.upcomingAppointment,

@@ -9,6 +9,7 @@ sealed interface Screen {
     data object GlucoseLevels : Screen
     data object FoodNotes : Screen
     data object Instructions : Screen
+    data class DiabetesResource(val title: String, val url: String) : Screen
     data object Appointments : Screen
 }
 
