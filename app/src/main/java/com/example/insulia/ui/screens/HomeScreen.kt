@@ -52,7 +52,7 @@ fun HomeScreen(
             modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background)
                 .padding(horizontal = 20.dp, vertical = 12.dp)
         ) {
-            Text(text = stringResource(R.string.home_greeting), fontSize = 22.sp,
+            Text(text = stringResource(getGreetingResId()), fontSize = 22.sp,
                 fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
             Text(text = patient.shortName, fontSize = 17.sp, color = MaterialTheme.colorScheme.onSurface)
         }
@@ -127,3 +127,14 @@ private fun LatestGlucoseCard(reading: GlucoseReading?) {
         }
     }
 }
+
+private fun getGreetingResId(): Int {
+    val hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
+    return when (hour) {
+        in 5..11 -> R.string.home_greeting_morning
+        in 12..16 -> R.string.home_greeting_afternoon
+        in 17..21 -> R.string.home_greeting_evening
+        else -> R.string.home_greeting_night
+    }
+}
+

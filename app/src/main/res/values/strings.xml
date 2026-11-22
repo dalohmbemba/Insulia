@@ -8,6 +8,10 @@
     <string name="nav_profile">Profile</string>
     <string name="nav_back_description">Go back</string>
     <string name="home_greeting">Good Morning</string>
+    <string name="home_greeting_morning">Good Morning</string>
+    <string name="home_greeting_afternoon">Good Afternoon</string>
+    <string name="home_greeting_evening">Good Evening</string>
+    <string name="home_greeting_night">Good Night</string>
     <string name="home_latest_glucose">Latest Glucose level</string>
     <string name="home_quick_actions">Quick actions</string>
     <string name="home_glucose_trend">Glucose Trend</string>
