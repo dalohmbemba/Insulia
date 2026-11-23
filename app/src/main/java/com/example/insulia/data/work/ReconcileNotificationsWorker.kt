@@ -31,7 +31,9 @@ class ReconcileNotificationsWorker(
             ?: return Result.failure()
 
         return try {
-            val signedInUid = repository.ensureSignedIn()
+            // A queued job must not create a fresh anonymous account after the
+            // patient has signed out; that would orphan the previous records.
+            val signedInUid = repository.accountUid ?: return Result.success()
             if (signedInUid != expectedUid) return Result.success()
             repository.reconcileNotifications()
             Result.success()

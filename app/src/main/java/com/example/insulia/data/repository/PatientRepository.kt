@@ -34,6 +34,8 @@ class PatientRepository(
 
     suspend fun ensureSignedIn(): String = authManager.ensureSignedIn()
 
+    suspend fun flushPendingWrites() = dataSource.flushPendingWrites()
+
     fun signOut() = authManager.signOut()
 
     suspend fun linkAccount(email: String, password: String): Result<Unit> =

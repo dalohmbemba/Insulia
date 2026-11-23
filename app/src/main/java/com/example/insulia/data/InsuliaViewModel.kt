@@ -238,7 +238,7 @@ class InsuliaViewModel(
         syncJobs += job
     }
 
-    private fun restartSync() {
+    private fun stopSync() {
         syncGeneration++
         syncJobs.forEach { it.cancel() }
         syncJobs.clear()
@@ -246,6 +246,10 @@ class InsuliaViewModel(
         initialNotificationReconcileEnqueued = false
         patientIdRequested = false
         ensuredPatientId = null
+    }
+
+    private fun restartSync() {
+        stopSync()
         startSync()
     }
 
@@ -270,21 +274,46 @@ class InsuliaViewModel(
         isAnonymousAccount = repository.isAnonymousAccount
     }
 
-    fun signOut() {
-        syncGeneration++
-        syncJobs.forEach { it.cancel() }
-        syncJobs.clear()
-        repository.signOut()
-        isAuthenticated = false
-        accountEmail = null
-        isAnonymousAccount = true
-        patient = emptyPatient()
-        readings = emptyList()
-        foodNotes = emptyList()
-        appointments = emptyList()
-        medications = emptyList()
-        notifications = emptyList()
+    /**
+     * Signs out of Firebase and returns to the welcome screen.
+     *
+     * An anonymous account has no credentials, so signing out of one that
+     * already holds records would make those records impossible to reopen.
+     * In that case the patient is asked to add an email first instead.
+     */
+    fun signOut(onSignedOut: () -> Unit) {
+        if (isAnonymousAccount && hasSavedData()) {
+            reportError("Add an email to this account before logging out, or your records will not be available next time.")
+            return
+        }
+        viewModelScope.launch {
+            // Give queued writes a chance to land before the account changes.
+            repository.flushPendingWrites()
+            stopSync()
+            repository.signOut()
+            isAuthenticated = false
+            accountEmail = null
+            isAnonymousAccount = true
+            patient = emptyPatient()
+            readings = emptyList()
+            foodNotes = emptyList()
+            appointments = emptyList()
+            medications = emptyList()
+            notifications = emptyList()
+            authFormError = null
+            dataError = null
+            dataMessage = null
+            onSignedOut()
+        }
     }
+
+    private fun hasSavedData(): Boolean =
+        readings.isNotEmpty() ||
+            foodNotes.isNotEmpty() ||
+            appointments.isNotEmpty() ||
+            medications.isNotEmpty() ||
+            notifications.isNotEmpty() ||
+            patient.fullName.isNotBlank()
 
     fun linkAccount(email: String, password: String) {
         val validation = validateCredentials(email, password)
@@ -829,33 +858,14 @@ class InsuliaViewModel(
      */
     private fun regenerateNotifications(enqueueWork: Boolean = true) {
         try {
-            val readStates = notifications.associate { it.id to it.isRead }
             notifications = NotificationReconciler.build(
                 readings = readings,
                 medications = medications,
                 appointments = appointments
-            ).map { item -> item.copy(isRead = readStates[item.id] ?: item.isRead) }
+            )
             if (enqueueWork) enqueueNotificationReconcile()
         } catch (t: Throwable) {
             reportError("Could not update notifications", t)
-        }
-    }
-
-    fun markNotificationRead(id: String) {
-        val previous = notifications.firstOrNull { it.id == id } ?: return
-        if (previous.isRead) return
-        val updated = previous.copy(isRead = true)
-        notifications = notifications.map { if (it.id == id) updated else it }
-
-        viewModelScope.launch {
-            try {
-                repository.saveNotifications(listOf(updated))
-            } catch (t: Throwable) {
-                notifications = notifications.map {
-                    if (it.id == id && it.isRead == updated.isRead) previous else it
-                }
-                reportError("Could not update notification status", t)
-            }
         }
     }
 

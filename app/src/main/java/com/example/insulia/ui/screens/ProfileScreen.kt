@@ -26,6 +26,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.MenuBook
 import androidx.compose.material.icons.automirrored.outlined.ShowChart
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.Event
 import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material.icons.outlined.Logout
@@ -63,6 +64,8 @@ fun ProfileScreen(
     onSelectTab: (Screen) -> Unit,
     onOpen: (Screen) -> Unit,
     onEditProfile: () -> Unit,
+    isAnonymous: Boolean,
+    onManageAccount: () -> Unit,
     onLogout: () -> Unit,
     selectedTab: Screen
 ) {
@@ -153,6 +156,25 @@ fun ProfileScreen(
             }
 
             Spacer(modifier = Modifier.height(16.dp))
+            OutlinedButton(
+                onClick = onManageAccount,
+                modifier = Modifier.fillMaxWidth().height(52.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Email,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+                Text(
+                    stringResource(
+                        if (isAnonymous) R.string.profile_account_set_up
+                        else R.string.profile_account_manage
+                    )
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
             OutlinedButton(
                 onClick = onLogout,
                 modifier = Modifier.fillMaxWidth().height(52.dp)

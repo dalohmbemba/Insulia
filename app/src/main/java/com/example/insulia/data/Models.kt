@@ -119,8 +119,7 @@ data class NotificationItem(
     val body: String? = null,
     val timestamp: Long = System.currentTimeMillis(),
     val type: String? = null,
-    val relatedId: String? = null,
-    val isRead: Boolean = false
+    val relatedId: String? = null
 )
 
 /** The patient details shown in the profile and personal records screens. */

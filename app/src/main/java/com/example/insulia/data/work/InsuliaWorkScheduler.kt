@@ -61,7 +61,10 @@ object InsuliaWorkScheduler {
             .build()
         manager.enqueueUniqueWork(
             "$NOTIFICATIONS_WORK_PREFIX$uid",
-            ExistingWorkPolicy.KEEP,
+            // A reconcile that is already running may have read the old state.
+            // Append another pass so the latest medication/appointment/read
+            // changes are never dropped.
+            ExistingWorkPolicy.APPEND_OR_REPLACE,
             request
         )
     }

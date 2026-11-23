@@ -62,11 +62,6 @@
     <string name="dialog_delete">Delete</string>
     <string name="page_notifications">Notifications</string>
     <string name="notifications_time_label">Today</string>
-    <string name="notifications_unread_group">Unread (%1$d)</string>
-    <string name="notifications_read_group">Read (%1$d)</string>
-    <string name="notifications_unread_empty">You’re all caught up.</string>
-    <string name="notifications_read_empty">No notifications have been read yet.</string>
-    <string name="notifications_mark_read">Mark as read</string>
     <string name="notification_type_glucose">Glucose level</string>
     <string name="notification_type_medication">Medication</string>
     <string name="notification_type_appointment">Appointment</string>

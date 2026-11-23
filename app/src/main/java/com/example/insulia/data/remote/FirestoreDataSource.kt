@@ -28,9 +28,8 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * Low level Firestore operations for the patient's data.
@@ -50,29 +49,31 @@ class FirestoreDataSource(
         get() = auth ?: throw IllegalStateException("Firebase not initialized")
 
     /**
-     * The UID of the currently signed-in patient.
+     * The UID of the patient who is signed in right now.
      *
-     * The value is read from Firebase Auth on every call instead of being
-     * cached, so switching from the anonymous session to an existing
-     * email/password account immediately points Firestore at the right data.
+     * Firestore never creates an account by itself. Sign-out must stay a real
+     * sign-out: if a listener or a queued worker were allowed to sign in
+     * anonymously here, the app would silently start reading and writing under
+     * a new UID and the patient's records would appear to be gone.
      */
-    private suspend fun uid(): String {
-        val authInst = authInstance
-        authInst.currentUser?.let { return it.uid }
-        // Several Firestore flows start at the same time on first launch. The
-        // lock makes sure only one anonymous sign-in is attempted.
-        return uidLock.withLock {
-            authInst.currentUser?.uid ?: run {
-                val result = authInst.signInAnonymously().await()
-                result.user?.uid
-                    ?: throw IllegalStateException("Failed to authenticate anonymously")
+    private fun requireUid(): String = authInstance.currentUser?.uid
+        ?: throw IllegalStateException("No patient is signed in")
+
+    /**
+     * Lets locally queued writes reach Firestore before an explicit sign-out.
+     * Offline writes remain in the cache; the timeout only keeps sign-out from
+     * hanging while the device has no connection.
+     */
+    suspend fun flushPendingWrites() {
+        val firestore = firestore ?: return
+        runCatching {
+            withTimeoutOrNull(PENDING_WRITES_TIMEOUT_MS) {
+                firestore.waitForPendingWrites().await()
             }
         }
     }
 
-    private val uidLock = Mutex()
-
-    private suspend fun userDoc() = firestoreInstance.collection("users").document(uid())
+    private suspend fun userDoc() = firestoreInstance.collection("users").document(requireUid())
 
     private suspend fun readingsCollection() = userDoc().collection("readings")
     private suspend fun foodNotesCollection() = userDoc().collection("foodNotes")
@@ -130,7 +131,7 @@ class FirestoreDataSource(
      */
     suspend fun ensurePatientId(): String? {
         val firestore = firestoreInstance
-        val uid = uid()
+        val uid = requireUid()
         val userRef = firestore.collection("users").document(uid)
         val patientIds = firestore.collection("patientIds")
 
@@ -385,7 +386,7 @@ class FirestoreDataSource(
      */
     suspend fun reconcileNotifications() {
         val firestore = firestoreInstance
-        val uid = uid()
+        val uid = requireUid()
         val userRef = firestore.collection("users").document(uid)
         val readingsRef = userRef.collection("readings")
         val medicationsRef = userRef.collection("medications")
@@ -403,13 +404,7 @@ class FirestoreDataSource(
         }
 
         val existing = notificationsRef.get().await().documents
-        val readStates = existing.associate { document ->
-            document.id to (document.toObject<NotificationItemDto>()?.isRead ?: false)
-        }
         val desired = NotificationReconciler.build(readings, medications, appointments)
-            .map { notification ->
-                notification.copy(isRead = readStates[notification.id] ?: false)
-            }
         val desiredIds = desired.map { it.id }.toSet()
         if (desired.isEmpty() && existing.isEmpty()) return
 
@@ -452,6 +447,10 @@ class FirestoreDataSource(
 
     val isAvailable: Boolean
         get() = firestore != null && auth != null
+
+    private companion object {
+        const val PENDING_WRITES_TIMEOUT_MS = 3_000L
+    }
 }
 
 // DTOs for Firestore serialization
@@ -600,10 +599,9 @@ data class NotificationItemDto(
     @get:PropertyName("body") @set:PropertyName("body") var body: String? = null,
     @get:PropertyName("timestamp") @set:PropertyName("timestamp") var timestamp: Long = 0,
     @get:PropertyName("type") @set:PropertyName("type") var type: String? = null,
-    @get:PropertyName("relatedId") @set:PropertyName("relatedId") var relatedId: String? = null,
-    @get:PropertyName("isRead") @set:PropertyName("isRead") var isRead: Boolean = false
+    @get:PropertyName("relatedId") @set:PropertyName("relatedId") var relatedId: String? = null
 ) {
-    constructor() : this("", 0, 0, null, null, 0, null, null, false)
+    constructor() : this("", 0, 0, null, null, 0, null, null)
 
     fun toModel(documentId: String) = NotificationItem(
         id = id.ifBlank { documentId },
@@ -613,8 +611,7 @@ data class NotificationItemDto(
         body = body,
         timestamp = if (timestamp == 0L) System.currentTimeMillis() else timestamp,
         type = type,
-        relatedId = relatedId,
-        isRead = isRead
+        relatedId = relatedId
     )
 }
 
@@ -626,6 +623,5 @@ fun NotificationItem.toDto() = NotificationItemDto(
     body = body,
     timestamp = timestamp,
     type = type,
-    relatedId = relatedId,
-    isRead = isRead
+    relatedId = relatedId
 )

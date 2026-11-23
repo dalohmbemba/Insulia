@@ -39,6 +39,7 @@ fun AccountDialog(
     isAnonymous: Boolean,
     accountEmail: String?,
     busy: Boolean,
+    errorMessage: String? = null,
     onDismiss: () -> Unit,
     onCreateAccount: (email: String, password: String) -> Unit,
     onSignIn: (email: String, password: String) -> Unit,
@@ -118,6 +119,15 @@ fun AccountDialog(
                         text = stringResource(R.string.account_sign_in_hint),
                         fontSize = 11.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                if (!errorMessage.isNullOrBlank()) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = errorMessage,
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.error
                     )
                 }
             }

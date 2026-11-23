@@ -36,7 +36,9 @@ class EnsurePatientIdWorker(
             ?: return Result.failure()
 
         return try {
-            val signedInUid = repository.ensureSignedIn()
+            // Never sign someone in from a background job. After an explicit
+            // sign-out there is no account whose ID should be reserved.
+            val signedInUid = repository.accountUid ?: return Result.success()
             // The patient signed in to a different account before this ran.
             if (signedInUid != expectedUid) return Result.success()
             val patientId = repository.ensurePatientId()

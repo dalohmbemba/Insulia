@@ -30,6 +30,7 @@ import com.example.insulia.data.Medication
 import com.example.insulia.data.ReadingContext
 import com.example.insulia.navigation.Screen
 import com.example.insulia.ui.components.QuickActionType
+import com.example.insulia.ui.dialogs.AccountDialog
 import com.example.insulia.ui.dialogs.BookingDialog
 import com.example.insulia.ui.dialogs.EditProfileDialog
 import com.example.insulia.ui.dialogs.FoodNoteDialog
@@ -52,6 +53,7 @@ private sealed interface AppDialog {
     data object FoodNote : AppDialog
     data object Booking : AppDialog
     data object EditProfile : AppDialog
+    data object Account : AppDialog
     data class MedicationEditor(val medication: Medication, val isNew: Boolean) : AppDialog
 }
 
@@ -84,6 +86,7 @@ fun InsuliaApp(viewModel: InsuliaViewModel = viewModel()) {
     LaunchedEffect(viewModel.isAuthenticated) {
         if (viewModel.isAuthenticated) {
             dialog = null
+            viewModel.clearAuthFormError()
             if (backStack.last() == Screen.Welcome) {
                 backStack.clear()
                 backStack.add(Screen.Home)
@@ -158,7 +161,6 @@ fun InsuliaApp(viewModel: InsuliaViewModel = viewModel()) {
                 notifications = viewModel.notifications,
                 onBack = ::goBack,
                 onSelectTab = ::selectTab,
-                onMarkRead = viewModel::markNotificationRead,
                 selectedTab = selectedTab
             )
 
@@ -168,9 +170,10 @@ fun InsuliaApp(viewModel: InsuliaViewModel = viewModel()) {
                 onSelectTab = ::selectTab,
                 onOpen = ::open,
                 onEditProfile = { dialog = AppDialog.EditProfile },
+                isAnonymous = viewModel.isAnonymousAccount,
+                onManageAccount = { dialog = AppDialog.Account },
                 onLogout = {
-                    viewModel.signOut()
-                    replaceRoot(Screen.Welcome)
+                    viewModel.signOut { replaceRoot(Screen.Welcome) }
                 },
                 selectedTab = selectedTab
             )
@@ -257,6 +260,16 @@ fun InsuliaApp(viewModel: InsuliaViewModel = viewModel()) {
             AppDialog.EditProfile -> EditProfileDialog(viewModel.patient, { dialog = null }) {
                 viewModel.updateProfile(it); dialog = null
             }
+            AppDialog.Account -> AccountDialog(
+                isAnonymous = viewModel.isAnonymousAccount,
+                accountEmail = viewModel.accountEmail,
+                busy = viewModel.authBusy,
+                errorMessage = viewModel.authFormError,
+                onDismiss = { dialog = null; viewModel.clearAuthFormError() },
+                onCreateAccount = viewModel::linkAccount,
+                onSignIn = viewModel::signInToAccount,
+                onResetPassword = viewModel::sendPasswordReset
+            )
             is AppDialog.MedicationEditor -> MedicationDialog(
                 shownDialog.medication, shownDialog.isNew, { dialog = null }
             ) { viewModel.addOrUpdateMedication(it); dialog = null }
